@@ -90,6 +90,10 @@ export default function App() {
         isPausedRef.current = isPaused;
     }, [isGenerating, isPaused]);
 
+    // =====================================================================
+    // SISTEM PEMANGGILAN API KE GATEWAY (CANVAS)
+    // Diubah menyesuaikan arsitektur "Gas Bubar" yang Anda minta
+    // =====================================================================
     const callGeminiAPI = (promptText, isRevision = false, oldCode = "", signal) => {
         return new Promise((resolve, reject) => {
             const reqId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
@@ -98,16 +102,18 @@ export default function App() {
             if (isRevision) {
                 systemInstruction = "LAPIS 1: ASISTEN BEDAH KODE\nAnda adalah asisten editor kode. Saya beri kode HTML asli dan instruksi perbaikan.\nATURAN MUTLAK: DILARANG merancang ulang dari nol. Modifikasi bagian spesifik saja. Pertahankan 90% struktur asli.\nKembalikan 1 file HTML utuh murni tanpa markdown (```html) dan tanpa penjelasan.\nTETAP pertahankan atau tambahkan komentar HTML pada bagian yang Anda ubah agar pengguna paham.";
             } else {
-                systemInstruction = "LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. Rancang Landing Page murni dalam 1 file HTML memakai Tailwind CSS via CDN.\nLAPIS 2: ESTETIKA & KUALITAS UI (MUTLAK)\n- Gunakan banyak ruang kosong (padding/margin besar p-6, p-10).\n- SEMUA tombol WAJIB transisi hover. Pastikan rasio kontras teks WCAG.\nLAPIS 3: ATURAN FORMAT (WAJIB)\n1. DILARANG Keras menggunakan tag markdown (```html). Output HTML murni dari awal sampai akhir.\n2. KOMENTAR KODE: WAJIB sisipkan komentar HTML (<!-- penjelasan -->) yang sangat jelas di SETIAP blok kode utama (misal: <!-- HEADER START -->, <!-- BAGIAN HERO -->, <!-- FITUR -->, dll) agar pengguna tau kode itu untuk apa.\n3. ANTI-COPYRIGHT: DILARANG MENGGUNAKAN NAMA BRAND ASLI/TERKENAL di dunia nyata. Gunakan nama yang UMUM dan GENERIK (misalnya: 'Perusahaan Kita', 'Toko Anda', 'Layanan Terbaik') agar aman dari pelanggaran hak cipta.";
+                systemInstruction = "LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. Rancang Landing Page murni dalam 1 file HTML memakai Tailwind CSS via CDN.\nDILARANG menggunakan desain template yang membosankan.\nLAPIS 2: ESTETIKA & KUALITAS UI (MUTLAK)\n- Gunakan banyak ruang kosong (padding/margin besar p-6, p-10).\n- SEMUA tombol WAJIB transisi hover. Pastikan rasio kontras teks WCAG.\nLAPIS 3: ATURAN FORMAT & KONTEN (WAJIB DIIKUTI)\n1. DILARANG keras membungkus dengan tag markdown (```html). Output murni dari <html> sampai </html> saja.\n2. WAJIB buat tag <title> di dalam <head> yang spesifik, unik, dan relevan.\n3. KOMENTAR KODE: WAJIB sisipkan komentar HTML (<!-- penjelasan -->) yang sangat jelas di setiap blok kode utama (misal: <!-- HEADER START -->, <!-- BAGIAN HERO -->, <!-- FITUR -->, dll) agar pengguna awam mengerti fungsi kode tersebut.\n4. ANTI-COPYRIGHT: DILARANG MENGGUNAKAN NAMA BRAND ASLI/TERKENAL di dunia nyata. Gunakan nama yang UMUM dan GENERIK (misalnya: 'Perusahaan Kita', 'Produk Anda', 'Layanan Terbaik') kecuali pengguna menyebutkan nama spesifik di prompt.";
             }
 
             const finalPrompt = isRevision ? `Berikut kode HTML:\n\n${oldCode}\n\nInstruksi Revisi: "${promptText}"` : promptText;
             
+            // Siapkan payload murni sesuai dokumentasi API Gemini
             const payload = {
                 contents: [{ parts: [{ text: finalPrompt }] }],
                 systemInstruction: { parts: [{ text: systemInstruction }] }
             };
 
+            // Event listener untuk menangkap balasan dari Canvas HTML
             const handleMessage = (event) => {
                 const data = event.data;
                 if (data && data.type === 'GEMINI_RESPONSE' && data.id === reqId) {
@@ -115,9 +121,12 @@ export default function App() {
                     if (data.success) {
                         let text = data.data.candidates?.[0]?.content?.parts?.[0]?.text;
                         if (!text) return reject(new Error("Format respons tidak valid."));
+                        
                         let cleanCode = text.trim();
+                        // Pembersihan markdown jaga-jaga jika AI nakal
                         const match = cleanCode.match(/```(?:html)?\s*([\s\S]*?)```/i);
                         if (match) cleanCode = match[1].trim();
+                        
                         resolve(cleanCode);
                     } else {
                         reject(new Error(data.error));
@@ -127,6 +136,7 @@ export default function App() {
 
             window.addEventListener('message', handleMessage);
 
+            // Handle pembatalan (Pause)
             if (signal) {
                 signal.addEventListener('abort', () => {
                     window.removeEventListener('message', handleMessage);
@@ -134,15 +144,15 @@ export default function App() {
                 });
             }
 
-            // Kirim pesan instruksi ke HTML Gateway Induk
+            // MENGIRIM PESAN KE GATEWAY CANVAS (Induk)
             window.parent.postMessage({
                 type: 'CALL_GEMINI',
                 id: reqId,
-                endpointPath: "gemini-2.5-flash-preview-09-2025:generateContent", // Endpoint khusus Vercel
-                payload: payload
+                payload: payload // Hanya mengirim payload, biarkan Canvas yang mengatur URL & API Key
             }, '*');
         });
     };
+    // =====================================================================
 
     const buildPromptStr = () => {
         let aiPrompt = `Topik Utama/Deskripsi: "${promptInput}".\n`;
@@ -483,6 +493,155 @@ export default function App() {
                                     )}
                                 </div>
 
+                                {/* Accordion: Images Internal */}
+                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('imgInt')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Gambar Internal (Auto AI)</span>
+                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'imgInt' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    {activeAccordion === 'imgInt' && (
+                                        <div className="border-t border-slate-200 p-2 flex gap-2">
+                                            <div className="w-1/3">
+                                                <label className="block text-[9px] font-bold text-slate-500 mb-1">Jumlah</label>
+                                                <input type="number" min="0" max="10" value={imgInt.qty} onChange={e => setImgInt({...imgInt, qty: parseInt(e.target.value)||0})} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-[#C8D100] text-center" />
+                                            </div>
+                                            <div className="w-2/3">
+                                                <label className="block text-[9px] font-bold text-slate-500 mb-1">Rasio Gambar</label>
+                                                <select value={imgInt.ratio} onChange={e => setImgInt({...imgInt, ratio: e.target.value})} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-[#C8D100]">
+                                                    <option value="auto">Menyesuaikan AI</option><option value="1:1">Kotak (1:1)</option>
+                                                    <option value="3:4">Potret (3:4)</option><option value="4:3">Lanskap (4:3)</option>
+                                                    <option value="16:9">Layar Lebar (16:9)</option><option value="9:16">Story/Reels (9:16)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Accordion: Images External */}
+                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('imgExt')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg> Gambar External</span>
+                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'imgExt' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    {activeAccordion === 'imgExt' && (
+                                        <div className="border-t border-slate-200 flex flex-col">
+                                            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
+                                                {extImages.map(e => (
+                                                    <div key={e.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                        <input type="text" value={e.url} onChange={ev => setExtImages(extImages.map(x => x.id === e.id ? {...x, url: ev.target.value} : x))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100] pr-6" placeholder="URL: https://..." />
+                                                        <input type="text" value={e.desc} onChange={ev => setExtImages(extImages.map(x => x.id === e.id ? {...x, desc: ev.target.value} : x))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Penjelasan Letak (Misal: Foto Utama)" />
+                                                        <button onClick={() => setExtImages(extImages.filter(x => x.id !== e.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
+                                                <button onClick={() => setExtImages([...extImages, {id: Date.now(), url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Gambar External</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Accordion: Medsos */}
+                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('medsos')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Tautan Medsos/External</span>
+                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'medsos' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    {activeAccordion === 'medsos' && (
+                                        <div className="border-t border-slate-200 flex flex-col">
+                                            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
+                                                {medsos.map(m => (
+                                                    <div key={m.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                        <div className="flex gap-1.5">
+                                                            <select value={m.type} onChange={ev => setMedsos(medsos.map(x => x.id === m.id ? {...x, type: ev.target.value} : x))} className="w-1/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100]">
+                                                                <option value="Instagram">Instagram</option><option value="TikTok">TikTok</option><option value="WhatsApp">WhatsApp</option><option value="YouTube">YouTube</option><option value="Facebook">Facebook</option><option value="Twitter/X">Twitter/X</option><option value="LinkedIn">LinkedIn</option><option value="Threads">Threads</option><option value="Lainnya">Lainnya</option>
+                                                            </select>
+                                                            <input type="text" value={m.url} onChange={ev => setMedsos(medsos.map(x => x.id === m.id ? {...x, url: ev.target.value} : x))} className="w-2/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100] pr-6" placeholder="URL Target..." />
+                                                        </div>
+                                                        {m.type === 'Lainnya' && <input type="text" value={m.desc} onChange={ev => setMedsos(medsos.map(x => x.id === m.id ? {...x, desc: ev.target.value} : x))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner mt-0.5" placeholder="Penjelasan Link (Misal: Portofolio)" />}
+                                                        <button onClick={() => setMedsos(medsos.filter(x => x.id !== m.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
+                                                <button onClick={() => setMedsos([...medsos, {id: Date.now(), type: 'Instagram', url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Tautan</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Accordion: Checkout */}
+                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('checkout')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg> Link Checkout</span>
+                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'checkout' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    {activeAccordion === 'checkout' && (
+                                        <div className="border-t border-slate-200 flex flex-col">
+                                            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
+                                                {checkouts.map(c => (
+                                                    <div key={c.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                        <input type="text" value={c.url} onChange={ev => setCheckouts(checkouts.map(x => x.id === c.id ? {...x, url: ev.target.value} : x))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100] pr-6" placeholder="URL Target Checkout..." />
+                                                        <input type="text" value={c.text} onChange={ev => setCheckouts(checkouts.map(x => x.id === c.id ? {...x, text: ev.target.value} : x))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Teks Tombol (Misal: Pesan Sekarang)" />
+                                                        <button onClick={() => setCheckouts(checkouts.filter(x => x.id !== c.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
+                                                <button onClick={() => setCheckouts([...checkouts, {id: Date.now(), url: '', text: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Checkout</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Accordion: Copyright */}
+                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('copyright')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><circle cx="12" cy="12" r="10"/><path d="M14.83 14.83a4 4 0 1 1 0-5.66"/></svg> Hak Cipta (Footer)</span>
+                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'copyright' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    {activeAccordion === 'copyright' && (
+                                        <div className="border-t border-slate-200 flex flex-col gap-2 p-2 bg-slate-50">
+                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                <input type="checkbox" checked={settings.copyright} onChange={e => setSettings({...settings, copyright: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Sertakan Hak Cipta di Footer</span>
+                                            </label>
+                                            {settings.copyright && (
+                                                <input type="text" value={settings.copyrightName} onChange={e => setSettings({...settings, copyrightName: e.target.value})} placeholder="Nama Entitas (Misal: ELITE STUDIO)" className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded-sm bg-white focus:ring-2 focus:ring-[#C8D100] outline-none transition-all shadow-sm mt-1" />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Accordion: Pengaturan Lainnya */}
+                                <div className="mb-4 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('other')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#898F00]">
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                            </svg> Pengaturan Lainnya
+                                        </span>
+                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'other' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    {activeAccordion === 'other' && (
+                                        <div className="border-t border-slate-200 flex flex-col gap-2 p-2 bg-slate-50">
+                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                <input type="checkbox" checked={settings.bioLink} onChange={e => setSettings({...settings, bioLink: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Mode Bio Link / Mini Page</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                <input type="checkbox" checked={settings.darkMode} onChange={e => setSettings({...settings, darkMode: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Responsif Gelap & Terang (Auto Toggle)</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                <input type="checkbox" checked={settings.responsive} onChange={e => setSettings({...settings, responsive: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Responsif Mutlak (Layar PC & HP)</span>
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Accordion: Parameter Eksekusi Cepat Bawah Sidebar */}
                                 <div className="grid grid-cols-3 gap-2 shrink-0 border-t border-slate-200/60 pt-3 mt-1">
                                     <div className="col-span-1">
@@ -496,6 +655,13 @@ export default function App() {
                                     <div className="col-span-1">
                                         <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Delay</label>
                                         <input type="number" min="0" max="10" value={params.delay} onChange={e => setParams({...params, delay: e.target.value})} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-[#C8D100] outline-none transition-all shadow-sm" />
+                                    </div>
+                                    <div className="col-span-3 mt-1">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                            <label className="block text-[10px] font-bold text-slate-600 leading-none">Nama Ekspor ZIP (.html)</label>
+                                        </div>
+                                        <input type="text" value={params.zipName} onChange={e => setParams({...params, zipName: e.target.value})} placeholder="Dihasilkan AI jika dibiarkan kosong" className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-[#C8D100] outline-none placeholder:text-slate-400 transition-all shadow-sm" />
                                     </div>
                                 </div>
                             </div>
@@ -521,7 +687,7 @@ export default function App() {
                             </div>
                             <div className="p-2 bg-white flex items-center justify-between gap-3">
                                 <button onClick={confirmClearAll} disabled={cards.length === 0 || isGenerating} className="flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold uppercase tracking-wide rounded border transition-colors bg-red-50 text-red-600 border-red-200 hover:bg-red-100 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> CLEAR ALL KARTU
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> CLEAR ALL KARTU
                                 </button>
                             </div>
                         </div>
@@ -530,18 +696,18 @@ export default function App() {
                         <div className="flex gap-1.5 h-10">
                             <button onClick={handleStartGeneration} disabled={!promptInput.trim() && cards.length === 0} className={`flex-1 text-xs font-bold rounded-lg border-none flex items-center justify-center gap-2 uppercase tracking-wide truncate transition-all ${isGenerating ? 'bg-[#C8D100]/10 border-transparent shadow-none cursor-default' : promptInput.trim() || cards.length > 0 ? 'bg-[#C8D100] hover:bg-[#898F00] text-slate-900 shadow hover:-translate-y-0.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
                                 {isGenerating ? (
-                                    <><svg className="animate-spin w-4 h-4 text-[#C8D100]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg> <span className="text-[#C8D100]">Memproses...</span></>
+                                    <><svg className="animate-spin w-4 h-4 text-[#C8D100]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg> <span className="text-[#C8D100]">Memproses...</span></>
                                 ) : (
-                                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg> <span className="text-slate-900">GENERATE</span></>
+                                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg> <span className="text-slate-900">GENERATE</span></>
                                 )}
                             </button>
                             
                             <button onClick={handleTogglePause} disabled={!isGenerating && !isPaused} className={`w-10 flex items-center justify-center rounded-lg border shadow-sm transition-all active:scale-95 shrink-0 ${isGenerating && !isPaused ? 'bg-amber-100 border-amber-300 text-amber-600 hover:bg-amber-200 hover:-translate-y-0.5' : isPaused ? 'bg-green-600 text-white border-green-700 hover:bg-green-700 hover:-translate-y-0.5' : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                {isPaused ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>}
+                                {isPaused ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>}
                             </button>
                             
                             <button onClick={handleExportZip} disabled={successCount === 0 || isGenerating} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate ${successCount > 0 && !isGenerating ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> <span className="truncate">EKSPOR ZIP</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> <span className="truncate">EKSPOR ZIP</span>
                             </button>
                         </div>
                     </div>
@@ -569,7 +735,7 @@ export default function App() {
                             {cards.length === 0 ? (
                                 <div className="col-span-full flex flex-col items-center justify-center text-center w-full h-full min-h-[50vh]">
                                     <div className="w-20 h-20 bg-[#C8D100]/5 border border-[#C8D100]/20 text-[#C8D100]/60 rounded-full flex items-center justify-center mb-4">
-                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-700 mb-2">Belum Ada Antrean</h3>
                                     <p className="text-slate-500 text-sm max-w-md">Masukkan prompt di panel pengaturan, atur kuantitas, dan tekan GENERATE.</p>
@@ -585,16 +751,16 @@ export default function App() {
                                         <div key={card.id} className={`bg-white hover:shadow-md rounded-lg shadow-sm border flex flex-col transition-all duration-300 ${card.status === 'processing' ? 'border-[#C8D100] ring-2 ring-[#C8D100]/20' : card.status === 'failed' ? 'border-red-300' : 'border-slate-200'}`}>
                                             <div className="grid grid-cols-4 gap-1.5 p-2 bg-[#C8D100]/5 border-b border-[#C8D100]/10 rounded-t-lg shrink-0">
                                                 <button onClick={() => setPreviewModal({isOpen: true, code: card.code, mode: 'desktop', id: card.id})} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-[#C8D100]/20 text-[#898F00] hover:bg-[#C8D100]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span>
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span>
                                                 </button>
                                                 <button onClick={() => copyCode(card.code)} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-[#C8D100]/20 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span>
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span>
                                                 </button>
                                                 <button onClick={() => setEditModal({isOpen: true, id: card.id, code: card.code, history: [card.code], historyIndex: 0, tab: 'code', instruction: '', isRevising: false})} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-amber-50 border-amber-200 text-amber-600 hover:brightness-95 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span>
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span>
                                                 </button>
                                                 <button onClick={() => setCards(prev => prev.filter(c => c.id !== card.id))} disabled={card.status === 'processing'} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-[#C8D100]/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span>
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span>
                                                 </button>
                                             </div>
                                             
@@ -608,14 +774,14 @@ export default function App() {
                                                     {isDone ? (
                                                         <>
                                                             <div className="absolute inset-0 w-full h-full bg-transparent"><iframe srcDoc={card.code} className="absolute inset-0 w-full h-full border-none pointer-events-none scale-[0.35] origin-top-left" style={{width: '285%', height: '285%'}} scrolling="no"></iframe></div>
-                                                            <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/40 transition-all flex items-center justify-center"><svg className="text-white w-8 h-8 drop-shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>
+                                                            <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/40 transition-all flex items-center justify-center"><svg className="text-white w-8 h-8 drop-shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>
                                                         </>
                                                     ) : card.status === 'failed' ? (
                                                         <div className="p-2 text-center text-red-500"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div className="text-[8px] font-bold break-words px-2 leading-tight">{card.error || 'Gagal'}</div></div>
                                                     ) : card.status === 'processing' ? (
                                                         <div className="flex flex-col items-center text-[#C8D100]"><svg className="animate-spin w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></div>
                                                     ) : (
-                                                        <div className="text-slate-400"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div>
+                                                        <div className="text-slate-400"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div>
                                                     )}
                                                 </div>
                                                 <div className="flex-1 border border-slate-200 rounded-lg bg-slate-50 flex flex-col overflow-hidden">
@@ -645,19 +811,19 @@ export default function App() {
                 <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 p-2 sm:p-4 md:p-8 backdrop-blur-sm transition-opacity" onClick={() => setPreviewModal(prev => ({...prev, isOpen: false}))}>
                     <div className="relative flex flex-col w-full h-full max-w-5xl mx-auto transition-all duration-300" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setPreviewModal(prev => ({...prev, isOpen: false}))} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-2 shadow-xl hover:bg-red-600 hover:scale-110 transition-transform z-[110]">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                         </button>
                         <div className="bg-white shadow-2xl flex flex-col rounded-xl overflow-hidden w-full h-full relative">
                             <div className="bg-white p-3 border-b border-slate-200 shrink-0">
                                 <div className="flex gap-2 p-1 bg-slate-100 rounded-lg w-full h-[40px] border border-slate-200">
                                     <button onClick={() => setPreviewModal(prev => ({...prev, mode: 'desktop'}))} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewModal.mode === 'desktop' ? 'bg-white text-[#898F00] shadow-sm border border-[#C8D100]/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> PC
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> PC
                                     </button>
                                     <button onClick={() => setPreviewModal(prev => ({...prev, mode: 'mobile'}))} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewModal.mode === 'mobile' ? 'bg-white text-[#898F00] shadow-sm border border-[#C8D100]/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> HP
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> HP
                                     </button>
                                     <button onClick={() => { const blob = new Blob([previewModal.code], { type: 'text/html' }); window.open(URL.createObjectURL(blob), '_blank'); }} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> BUKA TAB BARU
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> BUKA TAB BARU
                                     </button>
                                 </div>
                             </div>
