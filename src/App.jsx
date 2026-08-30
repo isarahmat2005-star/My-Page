@@ -369,7 +369,7 @@ export default function App() {
     const paginatedCards = cards.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
-        <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col text-slate-900 bg-slate-100 font-sans">
+        <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col text-slate-900 bg-slate-100" style={{fontFamily: "'Share Tech', sans-serif"}}>
             <style>{`
                 .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
                 .custom-scroll::-webkit-scrollbar-track { background: transparent; }
