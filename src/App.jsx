@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const fontsList = [
+    { id: 'Share Tech', name: 'Share Tech' },
     { id: 'Inter', name: 'Inter' }, { id: 'Poppins', name: 'Poppins' }, { id: 'Montserrat', name: 'Montserrat' }, 
     { id: 'Roboto', name: 'Roboto' }, { id: 'Oswald', name: 'Oswald' }, { id: 'Playfair Display', name: 'Playfair Display' },
     { id: 'Merriweather', name: 'Merriweather' }, { id: 'Lora', name: 'Lora' }, { id: 'Space Grotesk', name: 'Space Grotesk' }, 
@@ -27,14 +28,13 @@ export default function App() {
     
     // State Pengaturan (Fonts, Colors, Inputs)
     const [activeAccordion, setActiveAccordion] = useState('');
-    const [currentFonts, setCurrentFonts] = useState({ all: 'Inter', judul: 'None', subjudul: 'None', isi: 'None', tombol: 'None' });
+    const [currentFonts, setCurrentFonts] = useState({ all: 'Share Tech', judul: 'None', subjudul: 'None', isi: 'None', tombol: 'None' });
     const [openFontDropdown, setOpenFontDropdown] = useState('');
     const [colors, setColors] = useState([
         { id: 1, hex: '#C8D100', role: 'Warna Utama (Primary/Tombol)' },
         { id: 2, hex: '#898F00', role: 'Warna Sekunder (Hover/Aksen)' }
     ]);
     
-    const [imgInt, setImgInt] = useState({ qty: 0, ratio: 'auto' });
     const [extImages, setExtImages] = useState([{ id: 1, url: '', desc: '' }]);
     const [medsos, setMedsos] = useState([{ id: 1, type: 'Instagram', url: '', desc: '' }]);
     const [checkouts, setCheckouts] = useState([{ id: 1, url: '', text: '' }]);
@@ -92,7 +92,6 @@ export default function App() {
 
     // =====================================================================
     // SISTEM PEMANGGILAN API KE GATEWAY (CANVAS)
-    // Diubah menyesuaikan arsitektur "Gas Bubar" yang Anda minta
     // =====================================================================
     const callGeminiAPI = (promptText, isRevision = false, oldCode = "", signal) => {
         return new Promise((resolve, reject) => {
@@ -123,7 +122,6 @@ export default function App() {
                         if (!text) return reject(new Error("Format respons tidak valid."));
                         
                         let cleanCode = text.trim();
-                        // Pembersihan markdown jaga-jaga jika AI nakal
                         const match = cleanCode.match(/```(?:html)?\s*([\s\S]*?)```/i);
                         if (match) cleanCode = match[1].trim();
                         
@@ -136,7 +134,6 @@ export default function App() {
 
             window.addEventListener('message', handleMessage);
 
-            // Handle pembatalan (Pause)
             if (signal) {
                 signal.addEventListener('abort', () => {
                     window.removeEventListener('message', handleMessage);
@@ -144,11 +141,11 @@ export default function App() {
                 });
             }
 
-            // MENGIRIM PESAN KE GATEWAY CANVAS (Induk)
+            // MENGIRIM PESAN KE GATEWAY CANVAS
             window.parent.postMessage({
                 type: 'CALL_GEMINI',
                 id: reqId,
-                payload: payload // Hanya mengirim payload, biarkan Canvas yang mengatur URL & API Key
+                payload: payload
             }, '*');
         });
     };
@@ -179,14 +176,6 @@ export default function App() {
         // Colors
         let colorRules = colors.map(c => c.role ? `- [Wajib untuk: ${c.role}]: ${c.hex}` : `- [Kombinasi Bebas]: ${c.hex}`);
         if(colorRules.length > 0) aiPrompt += `\nPALET WARNA MUTLAK (Gunakan utility Tailwind arbitrary bg-[${colors[0].hex}] dsb):\n${colorRules.join("\n")}\n`;
-
-        // Images
-        if (imgInt.qty > 0) {
-            let pSize = '800/800';
-            if(imgInt.ratio === '16:9') pSize = '1280/720'; else if(imgInt.ratio === '9:16') pSize = '720/1280';
-            else if(imgInt.ratio === '4:3') pSize = '1024/768'; else if(imgInt.ratio === '3:4') pSize = '768/1024';
-            aiPrompt += `\nGAMBAR INTERNAL (AUTO): Sisipkan tepat ${imgInt.qty} gambar <img src="https://picsum.photos/${pSize}?random=\${Math.random()}" class="w-full object-cover"> di bagian relevan.\n`;
-        }
 
         // Settings
         if (settings.darkMode) aiPrompt += `\nDARK MODE: Sediakan tombol toggle Dark/Light fungsional. Pakai class 'dark:' Tailwind.\n`;
@@ -248,7 +237,6 @@ export default function App() {
         const signal = abortCtrlRef.current.signal;
         const delayMs = params.delay * 1000;
         
-        // Baca status terbaru dari ref untuk queue concurrency
         const getNextPendingTask = () => {
             let latestCards;
             setCards(prev => { latestCards = prev; return prev; });
@@ -488,30 +476,6 @@ export default function App() {
                                             </div>
                                             <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
                                                 <button onClick={() => setColors([...colors, {id: Date.now(), hex: '#FFFFFF', role: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Warna</button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Accordion: Images Internal */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('imgInt')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Gambar Internal (Auto AI)</span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'imgInt' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
-                                    </button>
-                                    {activeAccordion === 'imgInt' && (
-                                        <div className="border-t border-slate-200 p-2 flex gap-2">
-                                            <div className="w-1/3">
-                                                <label className="block text-[9px] font-bold text-slate-500 mb-1">Jumlah</label>
-                                                <input type="number" min="0" max="10" value={imgInt.qty} onChange={e => setImgInt({...imgInt, qty: parseInt(e.target.value)||0})} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-[#C8D100] text-center" />
-                                            </div>
-                                            <div className="w-2/3">
-                                                <label className="block text-[9px] font-bold text-slate-500 mb-1">Rasio Gambar</label>
-                                                <select value={imgInt.ratio} onChange={e => setImgInt({...imgInt, ratio: e.target.value})} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-[#C8D100]">
-                                                    <option value="auto">Menyesuaikan AI</option><option value="1:1">Kotak (1:1)</option>
-                                                    <option value="3:4">Potret (3:4)</option><option value="4:3">Lanskap (4:3)</option>
-                                                    <option value="16:9">Layar Lebar (16:9)</option><option value="9:16">Story/Reels (9:16)</option>
-                                                </select>
                                             </div>
                                         </div>
                                     )}
