@@ -844,186 +844,204 @@ export default function App() {
                                 </div>
                                 
                                 {/* Colors */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('colorPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><PaletteIcon className="text-slate-400 group-hover:text-primaryDark" /> Palet Warna</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'colorPanel' ? 'rotate-180' : ''}`} />
+                                <div className="mb-3">
+                                    <button 
+                                        onClick={() => toggleAccordion('colorPanel')} 
+                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                            <PaletteIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Palet Warna
+                                        </span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'colorPanel' ? 'rotate-180' : ''}`} />
                                     </button>
+                                    
                                     {openPanel === 'colorPanel' && (
-                                        <div className="border-t border-slate-200 flex flex-col">
-                                            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {colorRows.map(row => (
-                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                        <div className="flex gap-2 items-center">
-                                                            <input type="color" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-6 h-6 p-0 border-0 rounded-sm cursor-pointer shrink-0" />
-                                                            <input type="text" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-20 text-[10px] font-mono font-bold p-1 border border-slate-200 rounded-sm bg-slate-50 outline-none focus:border-primary uppercase text-center" />
+                                        <div className="mt-2 flex flex-col gap-2">
+                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                    {colorRows.map(row => (
+                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                            <div className="flex gap-2 items-center">
+                                                                <input type="color" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-6 h-6 p-0 border-0 rounded-sm cursor-pointer shrink-0" />
+                                                                <input type="text" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-20 text-[10px] font-mono font-bold p-1 border border-slate-200 rounded-sm bg-slate-50 outline-none focus:border-primary uppercase text-center" />
+                                                            </div>
+                                                            <input type="text" value={row.label} onChange={e => handleColorChange(row.id, row.hex, e.target.value)} placeholder="Peran (Kosong = Bebas AI)" className="w-full text-[9px] p-1 border-none bg-slate-50 outline-none text-slate-700 font-medium rounded-sm shadow-inner placeholder:text-slate-400" />
+                                                            <button onClick={() => setColorRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                         </div>
-                                                        <input type="text" value={row.label} onChange={e => handleColorChange(row.id, row.hex, e.target.value)} placeholder="Peran (Kosong = Bebas AI)" className="w-full text-[9px] p-1 border-none bg-slate-50 outline-none text-slate-700 font-medium rounded-sm shadow-inner placeholder:text-slate-400" />
-                                                        <button onClick={() => setColorRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setColorRows(prev => [...prev, {id: Date.now(), hex: '#FFFFFF', label: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Warna</button>
+                                                    ))}
+                                                </div>
+                                                <div className="pt-2 border-t border-slate-200 mt-1">
+                                                    <button onClick={() => setColorRows(prev => [...prev, {id: Date.now(), hex: '#FFFFFF', label: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Warna</button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Internal Image */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('imgIntPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><ImageIcon className="text-slate-400 group-hover:text-primaryDark" /> Gambar Internal (Auto AI)</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'imgIntPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    {openPanel === 'imgIntPanel' && (
-                                        <div className="border-t border-slate-200 p-2">
-                                            <div className="flex gap-2">
-                                                <div className="w-1/3">
-                                                    <label className="block text-[9px] font-bold text-slate-500 mb-1">Jumlah</label>
-                                                    <input type="number" min="0" max="10" value={imgIntQty} onChange={e => setImgIntQty(e.target.value)} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-primary text-center" />
-                                                </div>
-                                                <div className="w-2/3">
-                                                    <label className="block text-[9px] font-bold text-slate-500 mb-1">Rasio Gambar</label>
-                                                    <select value={imgIntRatio} onChange={e => setImgIntRatio(e.target.value)} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-primary">
-                                                        <option value="auto">Menyesuaikan AI</option>
-                                                        <option value="1:1">Kotak (1:1)</option>
-                                                        <option value="3:4">Potret (3:4)</option>
-                                                        <option value="4:3">Lanskap (4:3)</option>
-                                                        <option value="16:9">Layar Lebar (16:9)</option>
-                                                        <option value="9:16">Story/Reels (9:16)</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                
                                 {/* Eksternal Image */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('imgExtPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><MonitorIcon className="text-slate-400 group-hover:text-primaryDark" /> Gambar External</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'imgExtPanel' ? 'rotate-180' : ''}`} />
+                                <div className="mb-3">
+                                    <button 
+                                        onClick={() => toggleAccordion('imgExtPanel')} 
+                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                            <MonitorIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Gambar External
+                                        </span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'imgExtPanel' ? 'rotate-180' : ''}`} />
                                     </button>
+                                    
                                     {openPanel === 'imgExtPanel' && (
-                                        <div className="border-t border-slate-200 flex flex-col">
-                                            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {imgExtRows.map(row => (
-                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                        <input type="text" value={row.url} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL: https://..." />
-                                                        <input type="text" value={row.desc} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Penjelasan Letak (Misal: Foto Utama)" />
-                                                        <button onClick={() => setImgExtRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setImgExtRows(prev => [...prev, {id: Date.now(), url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Gambar External</button>
+                                        <div className="mt-2 flex flex-col gap-2">
+                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                    {imgExtRows.map(row => (
+                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                            <input type="text" value={row.url} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL: https://..." />
+                                                            <input type="text" value={row.desc} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Penjelasan Letak (Misal: Foto Utama)" />
+                                                            <button onClick={() => setImgExtRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="pt-2 border-t border-slate-200 mt-1">
+                                                    <button onClick={() => setImgExtRows(prev => [...prev, {id: Date.now(), url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Gambar External</button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Medsos Link */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('medsosPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><LinkIcon className="text-slate-400 group-hover:text-primaryDark" /> Tautan Medsos/External</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'medsosPanel' ? 'rotate-180' : ''}`} />
+                                <div className="mb-3">
+                                    <button 
+                                        onClick={() => toggleAccordion('medsosPanel')} 
+                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                            <LinkIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Tautan Medsos/External
+                                        </span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'medsosPanel' ? 'rotate-180' : ''}`} />
                                     </button>
+                                    
                                     {openPanel === 'medsosPanel' && (
-                                        <div className="border-t border-slate-200 flex flex-col">
-                                            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {medsosRows.map(row => (
-                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                        <div className="flex gap-1.5">
-                                                            <select value={row.type} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, type: e.target.value} : r))} className="w-1/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary">
-                                                                <option value="Instagram">Instagram</option><option value="TikTok">TikTok</option><option value="WhatsApp">WhatsApp</option>
-                                                                <option value="YouTube">YouTube</option><option value="Facebook">Facebook</option><option value="Twitter/X">Twitter/X</option>
-                                                                <option value="LinkedIn">LinkedIn</option><option value="Threads">Threads</option><option value="Lainnya">Lainnya</option>
-                                                            </select>
-                                                            <input type="text" value={row.url} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-2/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target..." />
+                                        <div className="mt-2 flex flex-col gap-2">
+                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                    {medsosRows.map(row => (
+                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                            <div className="flex gap-1.5">
+                                                                <select value={row.type} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, type: e.target.value} : r))} className="w-1/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary">
+                                                                    <option value="Instagram">Instagram</option><option value="TikTok">TikTok</option><option value="WhatsApp">WhatsApp</option>
+                                                                    <option value="YouTube">YouTube</option><option value="Facebook">Facebook</option><option value="Twitter/X">Twitter/X</option>
+                                                                    <option value="LinkedIn">LinkedIn</option><option value="Threads">Threads</option><option value="Lainnya">Lainnya</option>
+                                                                </select>
+                                                                <input type="text" value={row.url} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-2/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target..." />
+                                                            </div>
+                                                            {row.type === 'Lainnya' && (
+                                                                <input type="text" value={row.desc} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner mt-0.5" placeholder="Penjelasan Link" />
+                                                            )}
+                                                            <button onClick={() => setMedsosRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                         </div>
-                                                        {row.type === 'Lainnya' && (
-                                                            <input type="text" value={row.desc} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner mt-0.5" placeholder="Penjelasan Link" />
-                                                        )}
-                                                        <button onClick={() => setMedsosRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setMedsosRows(prev => [...prev, {id: Date.now(), type: 'Instagram', url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Tautan</button>
+                                                    ))}
+                                                </div>
+                                                <div className="pt-2 border-t border-slate-200 mt-1">
+                                                    <button onClick={() => setMedsosRows(prev => [...prev, {id: Date.now(), type: 'Instagram', url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Tautan</button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Checkout Link */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('checkoutPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><ShoppingCartIcon className="text-slate-400 group-hover:text-primaryDark" /> Link Checkout</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'checkoutPanel' ? 'rotate-180' : ''}`} />
+                                <div className="mb-3">
+                                    <button 
+                                        onClick={() => toggleAccordion('checkoutPanel')} 
+                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                            <ShoppingCartIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Link Checkout
+                                        </span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'checkoutPanel' ? 'rotate-180' : ''}`} />
                                     </button>
+                                    
                                     {openPanel === 'checkoutPanel' && (
-                                        <div className="border-t border-slate-200 flex flex-col">
-                                            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {checkoutRows.map(row => (
-                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                        <input type="text" value={row.url} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target Checkout..." />
-                                                        <input type="text" value={row.text} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, text: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Teks Tombol (Misal: Pesan Sekarang)" />
-                                                        <button onClick={() => setCheckoutRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setCheckoutRows(prev => [...prev, {id: Date.now(), url: '', text: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Checkout</button>
+                                        <div className="mt-2 flex flex-col gap-2">
+                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                    {checkoutRows.map(row => (
+                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                            <input type="text" value={row.url} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target Checkout..." />
+                                                            <input type="text" value={row.text} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, text: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Teks Tombol (Misal: Pesan Sekarang)" />
+                                                            <button onClick={() => setCheckoutRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="pt-2 border-t border-slate-200 mt-1">
+                                                    <button onClick={() => setCheckoutRows(prev => [...prev, {id: Date.now(), url: '', text: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Checkout</button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Copyright */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('copyrightPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><CopyrightIcon className="text-slate-400 group-hover:text-primaryDark" /> Hak Cipta (Footer)</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'copyrightPanel' ? 'rotate-180' : ''}`} />
+                                <div className="mb-3">
+                                    <button 
+                                        onClick={() => toggleAccordion('copyrightPanel')} 
+                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                            <CopyrightIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Hak Cipta (Footer)
+                                        </span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'copyrightPanel' ? 'rotate-180' : ''}`} />
                                     </button>
+                                    
                                     {openPanel === 'copyrightPanel' && (
-                                        <div className="border-t border-slate-200">
-                                            <div className="flex flex-col gap-2 p-2 bg-slate-50">
-                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                    <input type="checkbox" checked={hasCopyright} onChange={e => setHasCopyright(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Sertakan Hak Cipta di Footer</span>
-                                                </label>
-                                                {hasCopyright && (
-                                                    <div className="mt-1">
-                                                        <input type="text" value={copyrightName} onChange={e => setCopyrightName(e.target.value)} placeholder="Nama Entitas (Misal: TOKO KITA)" className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded-sm bg-white focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
-                                                    </div>
-                                                )}
+                                        <div className="mt-2 flex flex-col gap-2">
+                                            <div className="bg-slate-50 border border-slate-200 rounded p-3 shadow-sm">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <label className="block text-[9px] font-bold text-slate-500 uppercase">Nama Entitas / Perusahaan</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={copyrightName} 
+                                                        onChange={e => setCopyrightName(e.target.value)} 
+                                                        placeholder="Misal: TOKO KITA" 
+                                                        className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded-sm bg-white focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" 
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Other settings */}
-                                <div className="mb-4 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('otherPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><SettingsIcon className="text-slate-400 group-hover:text-primaryDark" /> Pengaturan Lainnya</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'otherPanel' ? 'rotate-180' : ''}`} />
+                                <div className="mb-3">
+                                    <button 
+                                        onClick={() => toggleAccordion('otherPanel')} 
+                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                            <SettingsIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pengaturan Lainnya
+                                        </span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'otherPanel' ? 'rotate-180' : ''}`} />
                                     </button>
+                                    
                                     {openPanel === 'otherPanel' && (
-                                        <div className="border-t border-slate-200">
-                                            <div className="flex flex-col gap-2 p-2 bg-slate-50">
-                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                    <input type="checkbox" checked={chkBioLink} onChange={e => setChkBioLink(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Mode Bio Link / Mini Page</span>
-                                                </label>
-                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                    <input type="checkbox" checked={chkDarkMode} onChange={e => setChkDarkMode(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Gelap & Terang (Auto Toggle)</span>
-                                                </label>
-                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                    <input type="checkbox" checked={chkResponsive} onChange={e => setChkResponsive(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Mutlak (Layar PC & HP)</span>
-                                                </label>
+                                        <div className="mt-2 flex flex-col gap-2">
+                                            <div className="bg-slate-50 border border-slate-200 rounded p-3 shadow-sm">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                        <input type="checkbox" checked={chkBioLink} onChange={e => setChkBioLink(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                        <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Mode Bio Link / Mini Page</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                        <input type="checkbox" checked={chkDarkMode} onChange={e => setChkDarkMode(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                        <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Gelap & Terang (Auto Toggle)</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                        <input type="checkbox" checked={chkResponsive} onChange={e => setChkResponsive(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                        <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Mutlak (Layar PC & HP)</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
