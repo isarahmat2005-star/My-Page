@@ -1,1 +1,40 @@
-@tailwind base;@tailwind components;@tailwind utilities;@layer base {body {font-family: 'Share Tech', sans-serif;overscroll-behavior: contain;margin: 0;padding: 0;background-color: #f1f5f9; /* Warna slate-100 */}/* Menghilangkan panah atas/bawah bawaan browser pada input number */input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button {-webkit-appearance: none;margin: 0;}input[type="number"] {-moz-appearance: textfield;}/* Memberi warna aksen utama pada checkbox */input[type="checkbox"] {accent-color: #898F00;}}@layer utilities {/* Custom Scrollbar yang elegan */.custom-scroll::-webkit-scrollbar {width: 4px;height: 4px;}.custom-scroll::-webkit-scrollbar-track {background: transparent;}.custom-scroll::-webkit-scrollbar-thumb {background: #cbd5e1;border-radius: 4px;}.custom-scroll::-webkit-scrollbar-thumb:hover {background: #898F00;}/* Animasi titik memproses (Loading) */.dot-anim::after {content: '';animation: dots 1.5s steps(4, end) infinite;}}/* Keyframes untuk animasi titik */@keyframes dots {0% { content: ''; }25% { content: '.'; }50% { content: '..'; }75% { content: '...'; }100% { content: ''; }}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { 
+    font-family: 'Share Tech', sans-serif; 
+    overscroll-behavior: contain; 
+    margin: 0; 
+    padding: 0; 
+    background: #f1f5f9; 
+}
+
+/* Customisasi Scrollbar */
+.custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: #898F00; }
+
+/* Animasi titik (Loading text) */
+.dot-anim::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+@keyframes dots { 
+    0% { content: ''; } 
+    25% { content: '.'; } 
+    50% { content: '..'; } 
+    75% { content: '...'; } 
+    100% { content: ''; } 
+}
+
+/* Modifikasi Input Number */
+input[type="number"]::-webkit-inner-spin-button, 
+input[type="number"]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+input[type="number"] { -moz-appearance: textfield; }
+input[type="checkbox"] { accent-color: #898F00; }
+
+/* Animasi Putar Lambat */
+.animate-spin-slow { animation: spin 2s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
