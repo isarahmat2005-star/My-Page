@@ -16,7 +16,7 @@ import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './util
 // === KONFIGURASI GOOGLE APPS SCRIPT (SATPAM LOGIN) ===
 // Ganti dengan URL Deployment Web App GAS Anda sendiri.
 // =====================================================================
-const GAS_AUTH_URL = "GANTI_DENGAN_URL_GAS_ANDA";
+const GAS_AUTH_URL = "https://script.google.com/macros/s/AKfycbwSrRoGVoqdgSEHWWvtYHSiiYhr1KRRTiXAOKo5vMHTl1N7W8-0S5FXqMUt2t3VkQ2L-w/exec";
 
 // --- INDEXED DB: UNTUK DEVICE ID & AUTO-SAVE KARTU HASIL GENERATE ---
 const META_STORE_NAME = 'meta_store';
