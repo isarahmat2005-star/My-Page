@@ -1222,13 +1222,13 @@ export default function App() {
                 <section className="flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100">
                     <div className="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 shadow-sm z-10">
                         
-                        {/* Kiri: Pilihan Jumlah Item (Merapat ke kiri) */}
-                        <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                        {/* Kiri: Pilihan Jumlah Item (Dengan latar kotak yang sama) */}
+                        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded p-1 shadow-sm text-sm font-bold text-slate-600">
                             {[50, 100, 150, 200].map(size => (
                                 <button 
                                     key={size} 
                                     onClick={() => { setItemsPerPage(size); setCurrentPage(1); }} 
-                                    className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}
+                                    className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/20 shadow-sm' : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-100 hover:border-slate-200'}`}
                                 >
                                     {size}
                                 </button>
