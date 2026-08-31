@@ -1,375 +1,385 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-
-const fontsList = [
-    { id: 'Share Tech', name: 'Share Tech' },
-    { id: 'Inter', name: 'Inter' }, { id: 'Poppins', name: 'Poppins' }, { id: 'Montserrat', name: 'Montserrat' }, 
-    { id: 'Roboto', name: 'Roboto' }, { id: 'Oswald', name: 'Oswald' }, { id: 'Playfair Display', name: 'Playfair Display' },
-    { id: 'Merriweather', name: 'Merriweather' }, { id: 'Lora', name: 'Lora' }, { id: 'Space Grotesk', name: 'Space Grotesk' }, 
-    { id: 'Bebas Neue', name: 'Bebas Neue' }, { id: 'Open Sans', name: 'Open Sans' }, { id: 'Lato', name: 'Lato' }, 
-    { id: 'Nunito', name: 'Nunito' }, { id: 'Raleway', name: 'Raleway' }, { id: 'Ubuntu', name: 'Ubuntu' }, 
-    { id: 'Fira Sans', name: 'Fira Sans' }, { id: 'Quicksand', name: 'Quicksand' }, { id: 'Cinzel', name: 'Cinzel' }, 
-    { id: 'Josefin Sans', name: 'Josefin Sans' }, { id: 'Anton', name: 'Anton' }, { id: 'Rubik', name: 'Rubik' }, 
-    { id: 'Work Sans', name: 'Work Sans' }, { id: 'Noto Sans', name: 'Noto Sans' }, { id: 'PT Sans', name: 'PT Sans' }, 
-    { id: 'Karla', name: 'Karla' }, { id: 'Inconsolata', name: 'Inconsolata' }, { id: 'Mukta', name: 'Mukta' }, 
-    { id: 'Teko', name: 'Teko' }, { id: 'Cabin', name: 'Cabin' }, { id: 'Dosis', name: 'Dosis' },
-    { id: 'Signika', name: 'Signika' }, { id: 'Pacifico', name: 'Pacifico' }, { id: 'Zilla Slab', name: 'Zilla Slab' }, 
-    { id: 'Cairo', name: 'Cairo' }, { id: 'Archivo', name: 'Archivo' }, { id: 'Titillium Web', name: 'Titillium Web' }, 
-    { id: 'Varela Round', name: 'Varela Round' }, { id: 'Hind', name: 'Hind' }, { id: 'Abel', name: 'Abel' }, 
-    { id: 'Fjalla One', name: 'Fjalla One' }, { id: 'Dancing Script', name: 'Dancing Script' }, 
-    { id: 'Indie Flower', name: 'Indie Flower' }, { id: 'Caveat', name: 'Caveat' }, { id: 'Righteous', name: 'Righteous' }, 
-    { id: 'Crimson Text', name: 'Crimson Text' }, { id: 'Asap', name: 'Asap' }, { id: 'Exo 2', name: 'Exo 2' }, 
-    { id: 'Prompt', name: 'Prompt' }, { id: 'Manrope', name: 'Manrope' }, { id: 'Kanit', name: 'Kanit' }
-];
+import React, { useState, useEffect, useRef } from 'react';
+import { FONTS, ASPECT_RATIOS } from './constants.js';
+import { 
+    CustomSpinner, CheckCircleIcon, XCircleIcon, TrashIcon, 
+    SparklesIcon, PlayIcon, PauseIcon, DownloadIcon, 
+    EyeIcon, CopyIcon, AlertTriangleIcon, ChevronDownIcon, 
+    SettingsIcon, UndoIcon, RedoIcon, SendIcon, ImageIcon,
+    ExternalLinkIcon, SmartphoneIcon, MonitorIcon, PlusIcon,
+    PaletteIcon, LinkIcon, ShoppingCartIcon, CopyrightIcon,
+    CodeIcon, TypeIcon
+} from './icons.jsx';
+import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './utils.js';
 
 export default function App() {
-    const [time, setTime] = useState(new Date());
+    const [currentTime, setCurrentTime] = useState(new Date());
+    
+    // UI Panels State
+    const [openPanel, setOpenPanel] = useState(null); // 'fontPanel', 'colorPanel', etc.
+    const [openFontDropdown, setOpenFontDropdown] = useState(null);
+    
+    // Form Inputs State
     const [promptInput, setPromptInput] = useState('');
     const [extraInstructions, setExtraInstructions] = useState('');
     
-    // State Pengaturan (Fonts, Colors, Inputs)
-    const [activeAccordion, setActiveAccordion] = useState('');
-    const [currentFonts, setCurrentFonts] = useState({ all: 'Share Tech', judul: 'None', subjudul: 'None', isi: 'None', tombol: 'None' });
-    const [openFontDropdown, setOpenFontDropdown] = useState('');
-    const [colors, setColors] = useState([
-        { id: 1, hex: '#C8D100', role: 'Warna Utama (Primary/Tombol)' },
-        { id: 2, hex: '#898F00', role: 'Warna Sekunder (Hover/Aksen)' }
+    // Fonts State
+    const [currentFonts, setCurrentFonts] = useState({ all: 'Inter', judul: 'None', subjudul: 'None', isi: 'None', tombol: 'None' });
+    
+    // Colors State
+    const [colorRows, setColorRows] = useState([
+        { id: 1, hex: '#C8D100', label: 'Warna Utama (Primary/Tombol)' },
+        { id: 2, hex: '#898F00', label: 'Warna Sekunder (Hover/Aksen)' }
     ]);
     
-    const [extImages, setExtImages] = useState([{ id: 1, url: '', desc: '' }]);
-    const [medsos, setMedsos] = useState([{ id: 1, type: 'Instagram', url: '', desc: '' }]);
-    const [checkouts, setCheckouts] = useState([{ id: 1, url: '', text: '' }]);
+    // Internal Images State
+    const [imgIntQty, setImgIntQty] = useState(0);
+    const [imgIntRatio, setImgIntRatio] = useState('auto');
     
-    const [settings, setSettings] = useState({
-        bioLink: false, darkMode: false, responsive: true, copyright: false, copyrightName: ''
-    });
-    const [params, setParams] = useState({ qty: 5, worker: 5, delay: 3, zipName: '' });
+    // External Images State
+    const [imgExtRows, setImgExtRows] = useState([]);
+    
+    // Social Media State
+    const [medsosRows, setMedsosRows] = useState([]);
+    
+    // Checkout Links State
+    const [checkoutRows, setCheckoutRows] = useState([]);
+    
+    // Footer Copyright State
+    const [hasCopyright, setHasCopyright] = useState(false);
+    const [copyrightName, setCopyrightName] = useState('');
+    
+    // Other Settings State
+    const [chkBioLink, setChkBioLink] = useState(false);
+    const [chkDarkMode, setChkDarkMode] = useState(false);
+    const [chkResponsive, setChkResponsive] = useState(true);
+    
+    // Generation Settings State
+    const [qty, setQty] = useState(5);
+    const [workerCount, setWorkerCount] = useState(5);
+    const [delaySec, setDelaySec] = useState(3);
+    const [zipName, setZipName] = useState('');
 
-    const [cards, setCards] = useState([]);
+    // Queue and Cards State
+    const [cardsState, setCardsState] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [isZipping, setIsZipping] = useState(false);
+    
+    // Pagination
     const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [currentPage, setCurrentPage] = useState(1);
+    
+    // Modals and Global UI
+    const [previewCard, setPreviewCard] = useState(null);
+    const [previewDevice, setPreviewDevice] = useState('desktop');
+    
+    const [editCardId, setEditCardId] = useState(null);
+    const [editCodeArea, setEditCodeArea] = useState('');
+    const [editChatInput, setEditChatInput] = useState('');
+    const [editHistoryStack, setEditHistoryStack] = useState([]);
+    const [editHistoryIndex, setEditHistoryIndex] = useState(-1);
+    const [editTab, setEditTab] = useState('code');
+    const [isEditingRevising, setIsEditingRevising] = useState(false);
 
-    // Modals
-    const [previewModal, setPreviewModal] = useState({ isOpen: false, code: '', mode: 'desktop', id: null });
-    const [editModal, setEditModal] = useState({ isOpen: false, code: '', id: null, instruction: '', tab: 'code', history: [], historyIndex: -1, isRevising: false });
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', desc: '', onConfirm: null });
-    const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', desc: '' });
+    const [alertData, setAlertData] = useState(null);
+    const [confirmData, setConfirmData] = useState(null);
 
-    // Refs for safe access in loops
-    const isGeneratingRef = useRef(false);
+    // Refs
+    const cardsStateRef = useRef([]);
     const isPausedRef = useRef(false);
-    const abortCtrlRef = useRef(null);
+    const isGeneratingRef = useRef(false);
+    const abortControllerRef = useRef(null);
 
+    useEffect(() => { cardsStateRef.current = cardsState; }, [cardsState]);
+    
     useEffect(() => {
-        const timer = setInterval(() => setTime(new Date()), 1000);
-        
-        const handleClickOutside = (e) => {
-            if (!e.target.closest('.font-dropdown-container')) setOpenFontDropdown('');
-        };
-        document.addEventListener('click', handleClickOutside);
-        
-        // Dynamically load JSZip
-        const loadJSZip = async () => {
-             if (window.JSZip) return;
-             const script = document.createElement('script');
-             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-             script.async = true;
-             document.body.appendChild(script);
-        };
-        loadJSZip();
-
-        return () => {
-            clearInterval(timer);
-            document.removeEventListener('click', handleClickOutside);
-        };
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
     }, []);
 
-    useEffect(() => {
-        isGeneratingRef.current = isGenerating;
-        isPausedRef.current = isPaused;
-    }, [isGenerating, isPaused]);
+    const timeString = currentTime.toLocaleTimeString('id-ID', { hour12: false });
+    const dateString = currentTime.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    // =====================================================================
-    // SISTEM PEMANGGILAN API KE GATEWAY (CANVAS)
-    // =====================================================================
-    const callGeminiAPI = (promptText, isRevision = false, oldCode = "", signal) => {
-        return new Promise((resolve, reject) => {
-            const reqId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-            let systemInstruction = "";
-            
-            if (isRevision) {
-                systemInstruction = "LAPIS 1: ASISTEN BEDAH KODE\nAnda adalah asisten editor kode. Saya beri kode HTML asli dan instruksi perbaikan.\nATURAN MUTLAK: DILARANG merancang ulang dari nol. Modifikasi bagian spesifik saja. Pertahankan 90% struktur asli.\nKembalikan 1 file HTML utuh murni tanpa markdown (```html) dan tanpa penjelasan.\nTETAP pertahankan atau tambahkan komentar HTML pada bagian yang Anda ubah agar pengguna paham.";
-            } else {
-                systemInstruction = "LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. Rancang Landing Page murni dalam 1 file HTML memakai Tailwind CSS via CDN.\nDILARANG menggunakan desain template yang membosankan.\nLAPIS 2: ESTETIKA & KUALITAS UI (MUTLAK)\n- Gunakan banyak ruang kosong (padding/margin besar p-6, p-10).\n- SEMUA tombol WAJIB transisi hover. Pastikan rasio kontras teks WCAG.\nLAPIS 3: ATURAN FORMAT & KONTEN (WAJIB DIIKUTI)\n1. DILARANG keras membungkus dengan tag markdown (```html). Output murni dari <html> sampai </html> saja.\n2. WAJIB buat tag <title> di dalam <head> yang spesifik, unik, dan relevan.\n3. KOMENTAR KODE: WAJIB sisipkan komentar HTML (<!-- penjelasan -->) yang sangat jelas di setiap blok kode utama (misal: <!-- HEADER START -->, <!-- BAGIAN HERO -->, <!-- FITUR -->, dll) agar pengguna awam mengerti fungsi kode tersebut.\n4. ANTI-COPYRIGHT: DILARANG MENGGUNAKAN NAMA BRAND ASLI/TERKENAL di dunia nyata. Gunakan nama yang UMUM dan GENERIK (misalnya: 'Perusahaan Kita', 'Produk Anda', 'Layanan Terbaik') kecuali pengguna menyebutkan nama spesifik di prompt.";
-            }
+    const toggleAccordion = (panelName) => {
+        setOpenPanel(openPanel === panelName ? null : panelName);
+    };
 
-            const finalPrompt = isRevision ? `Berikut kode HTML:\n\n${oldCode}\n\nInstruksi Revisi: "${promptText}"` : promptText;
-            
-            // Siapkan payload murni sesuai dokumentasi API Gemini
-            const payload = {
-                contents: [{ parts: [{ text: finalPrompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
-            };
-
-            // Event listener untuk menangkap balasan dari Canvas HTML
-            const handleMessage = (event) => {
-                const data = event.data;
-                if (data && data.type === 'GEMINI_RESPONSE' && data.id === reqId) {
-                    window.removeEventListener('message', handleMessage);
-                    if (data.success) {
-                        let text = data.data.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!text) return reject(new Error("Format respons tidak valid."));
-                        
-                        let cleanCode = text.trim();
-                        const match = cleanCode.match(/```(?:html)?\s*([\s\S]*?)```/i);
-                        if (match) cleanCode = match[1].trim();
-                        
-                        resolve(cleanCode);
-                    } else {
-                        reject(new Error(data.error));
-                    }
+    const handleFontSelect = (target, fontId) => {
+        setCurrentFonts(prev => {
+            const newFonts = { ...prev, [target]: fontId };
+            if (target === 'all') {
+                if (fontId !== 'None') {
+                    newFonts.judul = 'None'; newFonts.subjudul = 'None'; newFonts.isi = 'None'; newFonts.tombol = 'None';
                 }
-            };
-
-            window.addEventListener('message', handleMessage);
-
-            if (signal) {
-                signal.addEventListener('abort', () => {
-                    window.removeEventListener('message', handleMessage);
-                    reject(new DOMException('Aborted', 'AbortError'));
-                });
             }
-
-            // MENGIRIM PESAN KE GATEWAY CANVAS
-            window.parent.postMessage({
-                type: 'CALL_GEMINI',
-                id: reqId,
-                payload: payload
-            }, '*');
+            return newFonts;
         });
-    };
-    // =====================================================================
-
-    const buildPromptStr = () => {
-        let aiPrompt = `Topik Utama/Deskripsi: "${promptInput}".\n`;
-        if (extraInstructions) aiPrompt += `INSTRUKSI KHUSUS PENGGUNA (WAJIB DIIKUTI): ${extraInstructions}\n`;
-        
-        // Fonts
-        let fontImports = new Set();
-        let fontRules = [];
-        if(currentFonts.all !== 'None') {
-            fontImports.add(currentFonts.all.replace(/ /g, '+'));
-            fontRules.push(`- Aturan Dasar: Terapkan 'font-family: ${currentFonts.all}, sans-serif;' di body/elemen induk.`);
-        } else {
-            if(currentFonts.judul !== 'None') { fontImports.add(currentFonts.judul.replace(/ /g, '+')); fontRules.push(`- KHUSUS TAG HEADING: 'font-family: ${currentFonts.judul}, sans-serif;'`); }
-            if(currentFonts.subjudul !== 'None') { fontImports.add(currentFonts.subjudul.replace(/ /g, '+')); fontRules.push(`- KHUSUS SUB-JUDUL: 'font-family: ${currentFonts.subjudul}, sans-serif;'`); }
-            if(currentFonts.isi !== 'None') { fontImports.add(currentFonts.isi.replace(/ /g, '+')); fontRules.push(`- KHUSUS PARAGRAF TEKS: 'font-family: ${currentFonts.isi}, sans-serif;'`); }
-            if(currentFonts.tombol !== 'None') { fontImports.add(currentFonts.tombol.replace(/ /g, '+')); fontRules.push(`- KHUSUS TOMBOL: 'font-family: ${currentFonts.tombol}, sans-serif;'`); }
-        }
-        if(fontRules.length > 0) {
-            aiPrompt += `\nTIPOGRAFI MUTLAK:\n`;
-            fontImports.forEach(imp => aiPrompt += `- Import dari Google Fonts: <link href="https://fonts.googleapis.com/css2?family=${imp}&display=swap" rel="stylesheet">\n`);
-            aiPrompt += fontRules.join("\n") + "\n";
-        }
-
-        // Colors
-        let colorRules = colors.map(c => c.role ? `- [Wajib untuk: ${c.role}]: ${c.hex}` : `- [Kombinasi Bebas]: ${c.hex}`);
-        if(colorRules.length > 0) aiPrompt += `\nPALET WARNA MUTLAK (Gunakan utility Tailwind arbitrary bg-[${colors[0].hex}] dsb):\n${colorRules.join("\n")}\n`;
-
-        // Settings
-        if (settings.darkMode) aiPrompt += `\nDARK MODE: Sediakan tombol toggle Dark/Light fungsional. Pakai class 'dark:' Tailwind.\n`;
-        if (settings.bioLink) aiPrompt += `\nSTRUKTUR MINI PAGE: Rancang layout gaya Biolink (max-w-md mx-auto) berpusat.\n`;
-        if (settings.responsive) aiPrompt += `\nRESPONSIF MUTLAK: Gunakan class (sm:, md:, lg:) agar layout sempurna di PC dan Mobile.\n`;
-        if (settings.copyright) aiPrompt += `\nFOOTER: Sisipkan Teks Hak Cipta di bagian paling bawah: "© ${new Date().getFullYear()} ${settings.copyrightName || 'Nama Perusahaan'}"\n`;
-
-        // Checkouts
-        if(checkouts.length > 0 && checkouts[0].url) {
-            let rules = checkouts.map(c => `- Tombol CTA "${c.text || 'Checkout'}" arahkan ke URL: ${c.url || '#'}`);
-            aiPrompt += `\nLINK CHECKOUT UTAMA:\n${rules.join("\n")}\n`;
-        }
-        
-        // Medsos
-        if(medsos.length > 0 && medsos[0].url) {
-            let rules = medsos.map(m => `- Tautan ${m.type === 'Lainnya' ? (m.desc || 'Eksternal') : 'Icon ' + m.type}: ${m.url || '#'}`);
-            aiPrompt += `\nTAUTAN MEDSOS/EKSTERNAL:\n${rules.join("\n")}\n`;
-        }
-
-        // Ext Images
-        if(extImages.length > 0 && extImages[0].url) {
-            let rules = extImages.filter(e => e.url).map(e => `- MASUKKAN GAMBAR INI: <img src="${e.url}"> (Penempatan: ${e.desc || 'Ilustrasi'})`);
-            if(rules.length > 0) aiPrompt += `\nGAMBAR EKSTERNAL WAJIB:\n${rules.join("\n")}\n`;
-        }
-
-        return aiPrompt;
+        setOpenFontDropdown(null);
     };
 
-    const updateCardState = (id, updates) => {
-        setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-    };
-
-    const handleStartGeneration = async () => {
-        if (isGeneratingRef.current) return;
-        if (!promptInput.trim() && cards.filter(c => c.status === 'pending').length === 0) return;
-
-        let finalZipName = params.zipName.trim();
-        if(!finalZipName) {
-            finalZipName = promptInput.split(' ').slice(0, 4).join('-').replace(/[^a-zA-Z0-9-]/g, '') || 'Hasil-Landing-Page';
-            setParams(p => ({...p, zipName: finalZipName}));
-        }
-
-        // Susun Queue Kartu Jika Belum Ada
-        let currentCards = [...cards];
-        if (currentCards.filter(c => c.status === 'pending').length === 0) {
-            const compiledPrompt = buildPromptStr();
-            const newCards = [];
-            for(let i=0; i<params.qty; i++) {
-                newCards.push({ id: 'card_' + Date.now() + Math.random().toString(36).substr(2, 5), title: `Variasi Page ${i+1}`, prompt: compiledPrompt, code: '', status: 'pending', error: null });
+    const handleColorChange = (id, newHex, newLabel) => {
+        setColorRows(prev => prev.map(row => {
+            if (row.id === id) {
+                let validHex = newHex;
+                if (!validHex.startsWith('#')) validHex = '#' + validHex;
+                return { ...row, hex: validHex, label: newLabel !== undefined ? newLabel : row.label };
             }
-            currentCards = [...currentCards, ...newCards];
-            setCards(currentCards);
+            return row;
+        }));
+    };
+
+    const getActiveFontsStr = () => {
+        let imports = new Set();
+        let rules = [];
+        
+        if(currentFonts.all !== 'None') {
+            imports.add(currentFonts.all.replace(/ /g, '+'));
+            rules.push(`- Aturan Dasar: Terapkan 'font-family: ${currentFonts.all}, sans-serif;' di body/elemen induk.`);
+        } else {
+            if(currentFonts.judul !== 'None') { imports.add(currentFonts.judul.replace(/ /g, '+')); rules.push(`- KHUSUS UNTUK SEMUA TAG HEADING (h1, h2, h3): Wajib gunakan 'font-family: ${currentFonts.judul}, sans-serif;'`); }
+            if(currentFonts.subjudul !== 'None') { imports.add(currentFonts.subjudul.replace(/ /g, '+')); rules.push(`- KHUSUS UNTUK SUB-JUDUL: Wajib gunakan 'font-family: ${currentFonts.subjudul}, sans-serif;'`); }
+            if(currentFonts.isi !== 'None') { imports.add(currentFonts.isi.replace(/ /g, '+')); rules.push(`- KHUSUS UNTUK PARAGRAF TEKS (<p>): Wajib gunakan 'font-family: ${currentFonts.isi}, sans-serif;'`); }
+            if(currentFonts.tombol !== 'None') { imports.add(currentFonts.tombol.replace(/ /g, '+')); rules.push(`- KHUSUS UNTUK TOMBOL (CTA): Wajib gunakan 'font-family: ${currentFonts.tombol}, sans-serif;'`); }
+        }
+
+        if(rules.length === 0) return "";
+        let r = `\nTIPOGRAFI MUTLAK:\n`;
+        imports.forEach(imp => r += `- Import dari Google Fonts: <link href="https://fonts.googleapis.com/css2?family=${imp}&display=swap" rel="stylesheet">\n`);
+        return r + rules.join("\n") + "\n";
+    };
+
+    const getActiveColorsStr = () => {
+        let rules = [];
+        colorRows.forEach(row => {
+            const role = row.label.trim();
+            if(role) rules.push(`- [Wajib untuk: ${role}]: ${row.hex}`);
+            else rules.push(`- [Kombinasi Bebas (Terapkan di area manapun yang cocok)]: ${row.hex}`);
+        });
+        if(rules.length === 0) return "";
+        return `\nPALET WARNA MUTLAK (Gunakan utility Tailwind arbitrary seperti bg-[${rules[0].split(']: ')[1]}] dsb):\n${rules.join("\n")}\n`;
+    };
+
+    const startGeneration = async () => {
+        if (isGeneratingRef.current) return;
+        
+        let newCards = [];
+        if (!isPausedRef.current && cardsState.filter(c => c.status === 'pending').length === 0) {
+            if(!promptInput.trim()) return;
+
+            let currentZipName = zipName;
+            if(!currentZipName.trim()) {
+                currentZipName = promptInput.split(' ').slice(0, 4).join('-').replace(/[^a-zA-Z0-9-]/g, '') || 'Hasil-Landing-Page';
+                setZipName(currentZipName);
+            }
+
+            let aiPrompt = `Topik Utama/Deskripsi: "${promptInput.trim()}".\n`;
+            if (extraInstructions.trim()) aiPrompt += `INSTRUKSI KHUSUS PENGGUNA (WAJIB DIIKUTI): ${extraInstructions.trim()}\n`;
+            
+            aiPrompt += getActiveFontsStr();
+            aiPrompt += getActiveColorsStr();
+
+            const intQty = parseInt(imgIntQty) || 0;
+            if (intQty > 0) {
+                let pSize = '800/800';
+                if(imgIntRatio === '16:9') pSize = '1280/720'; else if(imgIntRatio === '9:16') pSize = '720/1280';
+                else if(imgIntRatio === '4:3') pSize = '1024/768'; else if(imgIntRatio === '3:4') pSize = '768/1024';
+                aiPrompt += `\nGAMBAR INTERNAL (AUTO): Sisipkan tepat ${intQty} elemen gambar <img src="https://picsum.photos/${pSize}?random=\${Math.random()}" class="w-full object-cover"> di bagian yang relevan.\n`;
+            }
+
+            if (chkDarkMode) aiPrompt += `\nDARK MODE: Sediakan tombol toggle Dark/Light mode fungsional. Gunakan class 'dark:' Tailwind.\n`;
+            if (chkBioLink) aiPrompt += `\nSTRUKTUR MINI PAGE: Rancang layout gaya Biolink (max-w-md mx-auto) berpusat.\n`;
+            if (chkResponsive) aiPrompt += `\nRESPONSIF MUTLAK: Gunakan class (sm:, md:, lg:) agar layout sempurna di PC dan Mobile.\n`;
+            
+            if(checkoutRows.length > 0) {
+                let rules = checkoutRows.map(row => `- Tombol CTA "${row.text || 'Checkout'}" arahkan ke URL: ${row.url || '#'}`);
+                aiPrompt += `\nLINK CHECKOUT UTAMA:\n${rules.join("\n")}\n`;
+            }
+
+            if (hasCopyright) {
+                aiPrompt += `\nFOOTER: Sisipkan Teks Hak Cipta di bagian paling bawah: "© ${new Date().getFullYear()} ${copyrightName || 'Perusahaan Anda'}"\n`;
+            }
+
+            if(medsosRows.length > 0) {
+                let rules = medsosRows.map(row => {
+                    if(row.type === 'Lainnya') return `- Tautan untuk ${row.desc || 'Link Lainnya'}: ${row.url || '#'}`;
+                    return `- Tautan Icon ${row.type}: ${row.url || '#'}`;
+                });
+                aiPrompt += `\nTAUTAN MEDSOS/EKSTERNAL:\n${rules.join("\n")}\n`;
+            }
+
+            if(imgExtRows.length > 0) {
+                let rules = imgExtRows.map(row => {
+                    if(row.url) return `- MASUKKAN GAMBAR INI: <img src="${row.url}"> (Penempatan: ${row.desc || 'Gambar illustrasi'})`;
+                    return null;
+                }).filter(Boolean);
+                if(rules.length > 0) aiPrompt += `\nGAMBAR EKSTERNAL WAJIB:\n${rules.join("\n")}\n`;
+            }
+
+            const targetQty = parseInt(qty) || 5;
+            for(let i=0; i<targetQty; i++) {
+                newCards.push({ id: 'card_' + Date.now() + Math.random().toString(36).substr(2, 5), title: `Variasi Landing Page ${i+1}`, prompt: aiPrompt, code: '', status: 'pending', error: null });
+            }
+            
+            setCardsState(prev => [...newCards, ...prev]);
             setCurrentPage(1);
         }
 
         setIsGenerating(true);
         setIsPaused(false);
-        abortCtrlRef.current = new AbortController();
-        const signal = abortCtrlRef.current.signal;
-        const delayMs = params.delay * 1000;
-        
-        const getNextPendingTask = () => {
-            let latestCards;
-            setCards(prev => { latestCards = prev; return prev; });
-            return latestCards.find(c => c.status === 'pending');
-        };
+        isGeneratingRef.current = true;
+        isPausedRef.current = false;
+        abortControllerRef.current = new AbortController();
 
-        const concurrency = Math.min(params.worker, currentCards.filter(c => c.status === 'pending').length);
+        const delayMs = (parseInt(delaySec) || 0) * 1000;
         const workers = [];
+        const signal = abortControllerRef.current.signal;
+        const pendingCount = newCards.length > 0 ? newCards.length : cardsState.filter(c => c.status === 'pending').length;
+        const wCount = parseInt(workerCount) || 5;
+        const concurrency = Math.min(wCount, pendingCount);
 
         for (let w = 0; w < concurrency; w++) {
             workers.push((async () => {
                 if (w > 0 && delayMs > 0 && !isPausedRef.current) await new Promise(r => setTimeout(r, delayMs * w));
+                
                 while (!isPausedRef.current) {
-                    let task = getNextPendingTask();
-                    if (!task) break;
+                    let taskIndex = -1;
+                    let task = null;
                     
-                    updateCardState(task.id, { status: 'processing' });
+                    for(let i=0; i < cardsStateRef.current.length; i++) {
+                        if(cardsStateRef.current[i].status === 'pending') {
+                            taskIndex = i;
+                            task = cardsStateRef.current[i];
+                            break;
+                        }
+                    }
+
+                    if (!task || taskIndex === -1) break; 
+                    
+                    setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, status: 'processing' } : c));
+                    
                     try {
-                        const resultHTML = await callGeminiAPI(task.prompt, false, "", signal);
-                        updateCardState(task.id, { code: resultHTML, status: 'done' });
-                    } catch (err) {
-                        if (err.name !== 'AbortError') {
-                            updateCardState(task.id, { status: 'failed', error: err.message });
+                        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. Rancang Landing Page murni dalam 1 file HTML memakai Tailwind CSS via CDN.\nDILARANG menggunakan desain template yang membosankan.\nLAPIS 2: ESTETIKA & KUALITAS UI (MUTLAK)\n- Gunakan banyak ruang kosong (padding/margin besar p-6, p-10).\n- SEMUA tombol WAJIB transisi hover. Pastikan rasio kontras teks WCAG.\nLAPIS 3: ATURAN FORMAT & KONTEN (WAJIB DIIKUTI)\n1. DILARANG keras membungkus dengan tag markdown (\`\`\`html). Output murni dari <html> sampai </html> saja.\n2. WAJIB buat tag <title> di dalam <head> yang spesifik, unik, dan relevan.\n3. KOMENTAR KODE: WAJIB sisipkan komentar HTML (<!-- penjelasan -->) yang sangat jelas di setiap blok kode utama (misal: <!-- HEADER START -->, <!-- BAGIAN HERO -->, <!-- FITUR -->, dll) agar pengguna awam mengerti fungsi kode tersebut.\n4. ANTI-COPYRIGHT: DILARANG MENGGUNAKAN NAMA BRAND ASLI/TERKENAL di dunia nyata. Gunakan nama yang UMUM dan GENERIK (misalnya: "Perusahaan Kita", "Produk Anda", "Layanan Terbaik") kecuali pengguna menyebutkan nama spesifik di prompt.`;
+                        const payload = { contents: [{ parts: [{ text: task.prompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
+                        
+                        const resultHTML = await callGeminiApiViaProxy('gemini-2.5-flash:generateContent', payload);
+                        
+                        if (!isPausedRef.current) {
+                            setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, code: resultHTML, status: 'done' } : c));
                         } else {
-                            updateCardState(task.id, { status: 'pending' });
+                             setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, status: 'pending' } : c));
+                        }
+                    } catch (err) {
+                        if (!isPausedRef.current) {
+                            setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, status: 'failed', error: err.message } : c));
+                        } else {
+                             setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, status: 'pending' } : c));
                         }
                     }
                     if (delayMs > 0 && !isPausedRef.current) await new Promise(r => setTimeout(r, delayMs));
                 }
             })());
         }
-
         await Promise.all(workers);
+
         if (!isPausedRef.current) {
             setIsGenerating(false);
+            isGeneratingRef.current = false;
         }
     };
 
     const handleTogglePause = () => {
-        if (isGeneratingRef.current && !isPausedRef.current) {
-            setIsPaused(true); setIsGenerating(false);
-            if(abortCtrlRef.current) abortCtrlRef.current.abort();
-            setCards(prev => prev.map(c => c.status === 'processing' ? { ...c, status: 'pending' } : c));
-        } else if (isPausedRef.current) {
-            handleStartGeneration();
+        if (isGenerating && !isPaused) {
+            setIsPaused(true);
+            isPausedRef.current = true;
+            setIsGenerating(false);
+            isGeneratingRef.current = false;
+            if(abortControllerRef.current) abortControllerRef.current.abort();
+            setCardsState(prev => prev.map(c => c.status === 'processing' ? { ...c, status: 'pending' } : c));
+        } else if (isPaused) {
+            startGeneration();
         }
     };
 
-    const confirmClearAll = () => {
-        if (cards.length === 0) return;
-        setConfirmModal({
-            isOpen: true, title: 'Hapus Semua?', desc: 'Anda akan menghapus <b>seluruh antrean</b> secara permanen.<br><i>(Input deskripsi tetap aman)</i>',
-            onConfirm: () => {
-                if(abortCtrlRef.current) abortCtrlRef.current.abort();
-                setCards([]); setIsGenerating(false); setIsPaused(false); setCurrentPage(1);
+    const handleClearAll = () => {
+        setConfirmData({
+            title: "Hapus Semua?",
+            desc: "Anda akan menghapus <b>seluruh antrean</b> secara permanen.<br><i>(Input deskripsi akan tetap aman)</i>",
+            action: () => {
+                if(abortControllerRef.current) abortControllerRef.current.abort();
+                setCardsState([]); setIsGenerating(false); setIsPaused(false); setCurrentPage(1);
+                isGeneratingRef.current = false; isPausedRef.current = false;
             }
         });
     };
 
-    const copyCode = (code) => {
-        const ta = document.createElement('textarea'); ta.value = code; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-        setAlertModal({ isOpen: true, title: 'Sukses!', desc: 'Kode HTML berhasil disalin ke Clipboard.' });
-    };
-
-    const handleExportZip = async () => {
-        const doneCards = cards.filter(c => c.status === 'done' && c.code);
-        if (doneCards.length === 0) return;
-        
+    const handleDownloadZip = async () => {
+        const doneCards = cardsState.filter(c => c.status === 'done' && c.code); 
+        if(doneCards.length === 0) return;
+        setIsZipping(true);
         try {
-            if (!window.JSZip) {
-                 setAlertModal({ isOpen: true, title: 'Menunggu JSZip', desc: 'Modul kompresi sedang dimuat. Coba lagi dalam beberapa detik.'});
-                 return;
-            }
-            const zip = new window.JSZip();
-            doneCards.forEach((c, idx) => {
-                let docTitle = `Variasi_${idx+1}`;
-                const titleMatch = c.code.match(/<title>(.*?)<\/title>/i);
-                if (titleMatch && titleMatch[1]) {
-                    docTitle = titleMatch[1].trim().replace(/[^a-zA-Z0-9 -]/g, '').replace(/\s+/g, '-');
-                }
-                zip.file(`${docTitle}_${idx+1}.html`, c.code);
-            });
-            const content = await zip.generateAsync({ type: 'blob' });
-            const zipUrl = URL.createObjectURL(content);
-            const link = document.createElement('a'); 
-            link.href = zipUrl; link.download = `${params.zipName || 'Hasil-Landing-Page'}.zip`;
-            document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(zipUrl);
+            await downloadZipFiles(doneCards, zipName);
         } catch (err) {
-            setAlertModal({ isOpen: true, title: 'Error ZIP', desc: "Gagal menyusun ZIP: " + err.message });
+            setAlertData({ title: "Error ZIP", desc: "Gagal menyusun ZIP: " + err.message });
+        } finally {
+            setIsZipping(false);
         }
     };
 
-    const handleRevisiAI = async () => {
-        if (!editModal.instruction || !editModal.code) return;
-        setEditModal(prev => ({...prev, isRevising: true}));
+    const handleOpenEdit = (card) => {
+        setEditCardId(card.id);
+        setEditCodeArea(card.code);
+        setEditHistoryStack([card.code]);
+        setEditHistoryIndex(0);
+        setEditChatInput('');
+        setEditTab('code');
+    };
+
+    const handleEditInput = (e) => {
+        const val = e.target.value;
+        setEditCodeArea(val);
+        const newStack = editHistoryStack.slice(0, editHistoryIndex + 1);
+        newStack.push(val);
+        setEditHistoryStack(newStack);
+        setEditHistoryIndex(newStack.length - 1);
+    };
+
+    const handleRequestRevisi = async () => {
+        if(!editChatInput.trim() || !editCodeArea) return;
+        setIsEditingRevising(true);
         try {
-            const revisedCode = await callGeminiAPI(editModal.instruction, true, editModal.code);
+            let systemInstruction = `LAPIS 1: ASISTEN BEDAH KODE\nAnda adalah asisten editor kode. Saya beri kode HTML asli dan instruksi perbaikan.\nATURAN MUTLAK: DILARANG merancang ulang dari nol. Modifikasi bagian spesifik saja. Pertahankan 90% struktur asli.\nKembalikan 1 file HTML utuh murni tanpa markdown (\`\`\`html) dan tanpa penjelasan.\nTETAP pertahankan atau tambahkan komentar HTML pada bagian yang Anda ubah agar pengguna paham.`;
+            let finalPrompt = `Berikut kode HTML:\n\n${editCodeArea}\n\nInstruksi Revisi: "${editChatInput}"`;
+            const payload = { contents: [{ parts: [{ text: finalPrompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
             
-            let newHistory = editModal.history.slice(0, editModal.historyIndex + 1);
-            newHistory.push(revisedCode);
+            const revisedCode = await callGeminiApiViaProxy('gemini-2.5-flash:generateContent', payload);
             
-            setEditModal(prev => ({
-                ...prev, code: revisedCode, instruction: '',
-                history: newHistory, historyIndex: newHistory.length - 1, isRevising: false
-            }));
+            setEditCodeArea(revisedCode);
+            setEditChatInput('');
+            const newStack = editHistoryStack.slice(0, editHistoryIndex + 1);
+            newStack.push(revisedCode);
+            setEditHistoryStack(newStack);
+            setEditHistoryIndex(newStack.length - 1);
         } catch (err) {
-            setEditModal(prev => ({...prev, isRevising: false}));
-            setAlertModal({ isOpen: true, title: 'Error AI', desc: err.message });
+            setAlertData({ title: "Error AI", desc: "Gagal merevisi kode: " + err.message });
+        } finally {
+            setIsEditingRevising(false);
         }
     };
 
-    const handleEditSave = () => {
-        if(editModal.id) updateCardState(editModal.id, { code: editModal.code });
-        setEditModal(prev => ({...prev, isOpen: false}));
-    };
+    const countPending = cardsState.filter(c => c.status === 'pending' || c.status === 'processing').length;
+    const countSuccess = cardsState.filter(c => c.status === 'done').length;
+    const countFailed = cardsState.filter(c => c.status === 'failed').length;
+    
+    let displaySelected = countPending;
+    if (!isGenerating && countPending === 0) displaySelected = parseInt(qty) || 0;
 
-    const toggleAccordion = (id) => {
-        setActiveAccordion(prev => prev === id ? '' : id);
-    };
+    const totalPages = Math.ceil(cardsState.length / itemsPerPage) || 1;
+    const paginatedCards = cardsState.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    // Calculate Stats
-    const pendingCount = cards.filter(c => c.status === 'pending' || c.status === 'processing').length;
-    const successCount = cards.filter(c => c.status === 'done').length;
-    const failedCount = cards.filter(c => c.status === 'failed').length;
-    const displaySelected = (!isGeneratingRef.current && pendingCount === 0) ? parseInt(params.qty) || 0 : pendingCount;
-
-    // Pagination
-    const totalPages = Math.ceil(cards.length / itemsPerPage) || 1;
-    const paginatedCards = cards.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const inputClass = "w-full text-xs p-2 border border-gray-300 rounded bg-slate-50 focus:ring-2 focus:ring-primary outline-none transition-all";
 
     return (
-        <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col text-slate-900 bg-slate-100" style={{fontFamily: "'Share Tech', sans-serif"}}>
+        <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col text-slate-900 bg-slate-100 font-sans">
             <style>{`
                 .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
                 .custom-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -377,387 +387,401 @@ export default function App() {
                 .custom-scroll::-webkit-scrollbar-thumb:hover { background: #898F00; }
                 .dot-anim::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
                 @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; } }
-                input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-                input[type="number"] { -moz-appearance: textfield; }
-                input[type="checkbox"] { accent-color: #898F00; }
             `}</style>
-
-            {/* HEADER */}
+            
             <header className="bg-[#0f172a] border-b border-slate-800 sticky top-0 z-30 shadow-md h-14 flex items-center shrink-0">
                 <div className="w-full px-4 sm:px-6 flex justify-between items-center">
-                    <div className="text-[28px] leading-none font-bold text-[#C8D100] tracking-widest flex items-center gap-2">PAGE AI</div>
+                    <div className="text-[28px] leading-none font-bold text-primary tracking-widest flex items-center gap-2">PAGE AI</div>
                     <div className="text-right flex flex-col justify-center items-end text-slate-100">
-                        <div className="text-[16px] leading-none font-bold tracking-[0.1em]">{time.toLocaleTimeString('id-ID', { hour12: false })}</div>
-                        <div className="text-[11px] leading-tight text-slate-400 tracking-wider mt-0.5">{time.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                        <div className="text-[16px] leading-none font-bold tracking-[0.1em]">{timeString}</div>
+                        <div className="text-[11px] leading-tight text-slate-400 tracking-wider mt-0.5">{dateString}</div>
                     </div>
                 </div>
             </header>
 
             <main className="w-full flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative min-h-0 bg-slate-100">
                 
-                {/* SIDEBAR PENGATURAN */}
+                {/* SIDEBAR */}
                 <aside className="w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative">
                     <div className="flex-1 flex flex-col overflow-y-visible lg:overflow-y-auto overflow-x-hidden custom-scroll lg:pb-6 pb-0">
                         <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 mb-1">
                             
-                            {/* Tombol Panduan & Bantuan */}
                             <div className="flex gap-2 w-full">
-                                <a href="#" className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg> Panduan
-                                </a>
-                                <a href="#" className="flex-1 flex items-center justify-center gap-2 bg-[#C8D100] hover:bg-[#898F00] text-slate-900 font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg> Bantuan
-                                </a>
+                                <button className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200"><MonitorIcon /> Panduan</button>
+                                <button className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primaryDark text-slate-900 font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200"><ExternalLinkIcon /> Bantuan</button>
                             </div>
 
-                            <div className="bg-white p-3 rounded-lg shadow-sm border border-[#C8D100]/30 flex flex-col text-left">
-                                {/* Prompt Utama */}
+                            <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
                                 <div className="mb-3">
                                     <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Deskripsi Produk/Halaman <span className="text-red-500">*</span></label>
-                                    <textarea rows="2" value={promptInput} onChange={e => setPromptInput(e.target.value)} placeholder="Tuliskan deskripsi utama landing page Anda..." className="w-full text-xs p-2 border border-gray-300 rounded bg-slate-50 focus:ring-2 focus:ring-[#C8D100] outline-none h-16 resize-none custom-scroll transition-all"></textarea>
+                                    <textarea rows="2" placeholder="Tuliskan deskripsi utama landing page Anda..." value={promptInput} onChange={e => setPromptInput(e.target.value)} className={`${inputClass} h-16 resize-none custom-scroll py-2 px-2.5`} />
                                 </div>
-                                {/* Instruksi Khusus */}
+                                
                                 <div className="mb-4">
                                     <label className="block text-[11px] font-bold text-slate-500 mb-0.5">Instruksi Khusus (Opsional)</label>
-                                    <textarea rows="2" value={extraInstructions} onChange={e => setExtraInstructions(e.target.value)} placeholder="Misal: 'Wajib ada form testimoni' atau 'Tombol melayang'..." className="w-full text-xs p-2 border border-gray-300 rounded bg-slate-50 focus:ring-2 focus:ring-[#C8D100] outline-none h-12 resize-none custom-scroll transition-all"></textarea>
+                                    <textarea rows="2" placeholder="Misal: 'Wajib ada form testimoni'..." value={extraInstructions} onChange={e => setExtraInstructions(e.target.value)} className={`${inputClass} h-12 resize-none custom-scroll py-2 px-2.5`} />
                                 </div>
 
-                                {/* Accordion: Font */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md font-dropdown-container">
-                                    <button onClick={() => toggleAccordion('font')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400 group-hover:text-[#898F00]"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg> Pilihan Font</span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'font' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                {/* Font Options */}
+                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('fontPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><TypeIcon className="text-slate-400 group-hover:text-primaryDark" /> Pilihan Font</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'fontPanel' ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {activeAccordion === 'font' && (
-                                        <div className="border-t border-slate-200 pb-2 flex flex-col gap-2 p-2">
-                                            {['all', 'judul', 'subjudul', 'isi', 'tombol'].map(target => {
-                                                const isLocked = target !== 'all' && currentFonts.all !== 'None';
-                                                return (
-                                                    <div key={target} className="flex items-center justify-between gap-2 relative">
-                                                        <span className="text-[10px] font-bold text-slate-500 w-16 shrink-0 uppercase">{target}</span>
-                                                        <button disabled={isLocked} onClick={() => setOpenFontDropdown(prev => prev === target ? '' : target)} className={`flex-1 flex justify-between items-center bg-white border border-slate-200 rounded p-1.5 hover:bg-slate-50 transition shadow-sm text-left outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                                            <span className={isLocked || currentFonts[target] === 'None' ? 'text-[11px] truncate text-slate-400 italic' : 'text-[11px] truncate font-bold text-slate-800'}>{isLocked ? 'Terkunci (Ikut All)' : currentFonts[target]}</span>
-                                                            <svg className="w-3 h-3 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
-                                                        </button>
-                                                        {openFontDropdown === target && (
-                                                            <div className="absolute top-full right-0 w-[calc(100%-4rem)] max-h-[200px] overflow-y-auto bg-white border border-slate-200 rounded shadow-xl z-50 custom-scroll mt-1">
-                                                                <div onClick={() => { setCurrentFonts({...currentFonts, [target]: 'None'}); setOpenFontDropdown(''); }} className="p-2 border-b border-slate-100 hover:bg-red-50 cursor-pointer text-red-500 font-bold text-[10px] uppercase">NONE</div>
-                                                                {fontsList.map(f => (
-                                                                    <div key={f.id} onClick={() => { setCurrentFonts({...currentFonts, [target]: f.id}); setOpenFontDropdown(''); }} className="p-2 border-b border-slate-100 hover:bg-[#C8D100]/10 cursor-pointer text-slate-800 text-[14px]" style={{fontFamily: `'${f.id}', sans-serif`}}>{f.name}</div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
+                                    {openPanel === 'fontPanel' && (
+                                        <div className="border-t border-slate-200 pb-2">
+                                            <div className="flex flex-col gap-2 p-2 pb-0">
+                                                {['all', 'judul', 'subjudul', 'isi', 'tombol'].map(target => {
+                                                    const isLocked = target !== 'all' && currentFonts.all !== 'None';
+                                                    return (
+                                                        <div key={target} className="flex items-center justify-between gap-2 relative">
+                                                            <span className="text-[10px] font-bold text-slate-500 w-16 shrink-0 uppercase">{target}</span>
+                                                            <button onClick={() => !isLocked && setOpenFontDropdown(openFontDropdown === target ? null : target)} disabled={isLocked} className={`flex-1 flex justify-between items-center bg-white border border-slate-200 rounded p-1.5 transition shadow-sm text-left outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}>
+                                                                <span className={isLocked || currentFonts[target] === 'None' ? "text-[11px] truncate text-slate-400 italic" : "text-[11px] truncate font-bold text-slate-800"} style={{fontFamily: currentFonts[target] !== 'None' && !isLocked ? `'${currentFonts[target]}', sans-serif` : 'inherit'}}>
+                                                                    {isLocked ? "Terkunci (Ikut All Page)" : currentFonts[target]}
+                                                                </span>
+                                                                <ChevronDownIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                                            </button>
+                                                            {openFontDropdown === target && (
+                                                                <div className="absolute top-full right-0 w-[calc(100%-4rem)] max-h-[200px] overflow-y-auto bg-white border border-slate-200 rounded shadow-xl z-50 custom-scroll mt-1">
+                                                                    <div onClick={() => handleFontSelect(target, 'None')} className="p-2 border-b border-slate-100 hover:bg-red-50 cursor-pointer text-red-500 font-bold text-[10px] uppercase">NONE</div>
+                                                                    {FONTS.map(f => (
+                                                                        <div key={f.id} onClick={() => handleFontSelect(target, f.id)} className="p-2 border-b border-slate-100 hover:bg-primary/10 cursor-pointer text-slate-800 text-[14px]" style={{fontFamily: `'${f.id}', sans-serif`}}>{f.name}</div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Accordion: Colors */}
+                                {/* Colors */}
                                 <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('color')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg> Palet Warna</span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'color' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    <button onClick={() => toggleAccordion('colorPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><PaletteIcon className="text-slate-400 group-hover:text-primaryDark" /> Palet Warna</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'colorPanel' ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {activeAccordion === 'color' && (
+                                    {openPanel === 'colorPanel' && (
                                         <div className="border-t border-slate-200 flex flex-col">
                                             <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {colors.map(c => (
-                                                    <div key={c.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                {colorRows.map(row => (
+                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
                                                         <div className="flex gap-2 items-center">
-                                                            <input type="color" value={c.hex} onChange={e => setColors(colors.map(x => x.id === c.id ? {...x, hex: e.target.value.toUpperCase()} : x))} className="w-6 h-6 p-0 border-0 rounded-sm cursor-pointer shrink-0" />
-                                                            <input type="text" value={c.hex} onChange={e => { let val = e.target.value; if(!val.startsWith('#')) val = '#'+val; setColors(colors.map(x => x.id === c.id ? {...x, hex: val} : x)); }} className="w-20 text-[10px] font-mono font-bold p-1 border border-slate-200 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100] uppercase text-center" />
+                                                            <input type="color" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-6 h-6 p-0 border-0 rounded-sm cursor-pointer shrink-0" />
+                                                            <input type="text" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-20 text-[10px] font-mono font-bold p-1 border border-slate-200 rounded-sm bg-slate-50 outline-none focus:border-primary uppercase text-center" />
                                                         </div>
-                                                        <input type="text" value={c.role} onChange={e => setColors(colors.map(x => x.id === c.id ? {...x, role: e.target.value} : x))} placeholder="Peran (Kosong = Bebas AI)" className="w-full text-[9px] p-1 border-none bg-slate-50 outline-none text-slate-700 font-medium rounded-sm shadow-inner placeholder:text-slate-400" />
-                                                        <button onClick={() => setColors(colors.filter(x => x.id !== c.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                        <input type="text" value={row.label} onChange={e => handleColorChange(row.id, row.hex, e.target.value)} placeholder="Peran (Kosong = Bebas AI)" className="w-full text-[9px] p-1 border-none bg-slate-50 outline-none text-slate-700 font-medium rounded-sm shadow-inner placeholder:text-slate-400" />
+                                                        <button onClick={() => setColorRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                     </div>
                                                 ))}
                                             </div>
                                             <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setColors([...colors, {id: Date.now(), hex: '#FFFFFF', role: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Warna</button>
+                                                <button onClick={() => setColorRows(prev => [...prev, {id: Date.now(), hex: '#FFFFFF', label: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Warna</button>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Accordion: Images External */}
+                                {/* Internal Image */}
                                 <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('imgExt')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg> Gambar External</span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'imgExt' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    <button onClick={() => toggleAccordion('imgIntPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><ImageIcon className="text-slate-400 group-hover:text-primaryDark" /> Gambar Internal (Auto AI)</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'imgIntPanel' ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {activeAccordion === 'imgExt' && (
+                                    {openPanel === 'imgIntPanel' && (
+                                        <div className="border-t border-slate-200 p-2">
+                                            <div className="flex gap-2">
+                                                <div className="w-1/3">
+                                                    <label className="block text-[9px] font-bold text-slate-500 mb-1">Jumlah</label>
+                                                    <input type="number" min="0" max="10" value={imgIntQty} onChange={e => setImgIntQty(e.target.value)} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-primary text-center" />
+                                                </div>
+                                                <div className="w-2/3">
+                                                    <label className="block text-[9px] font-bold text-slate-500 mb-1">Rasio Gambar</label>
+                                                    <select value={imgIntRatio} onChange={e => setImgIntRatio(e.target.value)} className="w-full text-[10px] p-1.5 border border-gray-300 rounded-sm bg-white outline-none focus:border-primary">
+                                                        <option value="auto">Menyesuaikan AI</option>
+                                                        <option value="1:1">Kotak (1:1)</option>
+                                                        <option value="3:4">Potret (3:4)</option>
+                                                        <option value="4:3">Lanskap (4:3)</option>
+                                                        <option value="16:9">Layar Lebar (16:9)</option>
+                                                        <option value="9:16">Story/Reels (9:16)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* Eksternal Image */}
+                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
+                                    <button onClick={() => toggleAccordion('imgExtPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><MonitorIcon className="text-slate-400 group-hover:text-primaryDark" /> Gambar External</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'imgExtPanel' ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {openPanel === 'imgExtPanel' && (
                                         <div className="border-t border-slate-200 flex flex-col">
                                             <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {extImages.map(e => (
-                                                    <div key={e.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                        <input type="text" value={e.url} onChange={ev => setExtImages(extImages.map(x => x.id === e.id ? {...x, url: ev.target.value} : x))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100] pr-6" placeholder="URL: https://..." />
-                                                        <input type="text" value={e.desc} onChange={ev => setExtImages(extImages.map(x => x.id === e.id ? {...x, desc: ev.target.value} : x))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Penjelasan Letak (Misal: Foto Utama)" />
-                                                        <button onClick={() => setExtImages(extImages.filter(x => x.id !== e.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                {imgExtRows.map(row => (
+                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                        <input type="text" value={row.url} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL: https://..." />
+                                                        <input type="text" value={row.desc} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Penjelasan Letak (Misal: Foto Utama)" />
+                                                        <button onClick={() => setImgExtRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                     </div>
                                                 ))}
                                             </div>
                                             <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setExtImages([...extImages, {id: Date.now(), url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Gambar External</button>
+                                                <button onClick={() => setImgExtRows(prev => [...prev, {id: Date.now(), url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Gambar External</button>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Accordion: Medsos */}
+                                {/* Medsos Link */}
                                 <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('medsos')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Tautan Medsos/External</span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'medsos' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    <button onClick={() => toggleAccordion('medsosPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><LinkIcon className="text-slate-400 group-hover:text-primaryDark" /> Tautan Medsos/External</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'medsosPanel' ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {activeAccordion === 'medsos' && (
+                                    {openPanel === 'medsosPanel' && (
                                         <div className="border-t border-slate-200 flex flex-col">
                                             <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {medsos.map(m => (
-                                                    <div key={m.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                {medsosRows.map(row => (
+                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
                                                         <div className="flex gap-1.5">
-                                                            <select value={m.type} onChange={ev => setMedsos(medsos.map(x => x.id === m.id ? {...x, type: ev.target.value} : x))} className="w-1/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100]">
-                                                                <option value="Instagram">Instagram</option><option value="TikTok">TikTok</option><option value="WhatsApp">WhatsApp</option><option value="YouTube">YouTube</option><option value="Facebook">Facebook</option><option value="Twitter/X">Twitter/X</option><option value="LinkedIn">LinkedIn</option><option value="Threads">Threads</option><option value="Lainnya">Lainnya</option>
+                                                            <select value={row.type} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, type: e.target.value} : r))} className="w-1/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary">
+                                                                <option value="Instagram">Instagram</option><option value="TikTok">TikTok</option><option value="WhatsApp">WhatsApp</option>
+                                                                <option value="YouTube">YouTube</option><option value="Facebook">Facebook</option><option value="Twitter/X">Twitter/X</option>
+                                                                <option value="LinkedIn">LinkedIn</option><option value="Threads">Threads</option><option value="Lainnya">Lainnya</option>
                                                             </select>
-                                                            <input type="text" value={m.url} onChange={ev => setMedsos(medsos.map(x => x.id === m.id ? {...x, url: ev.target.value} : x))} className="w-2/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100] pr-6" placeholder="URL Target..." />
+                                                            <input type="text" value={row.url} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-2/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target..." />
                                                         </div>
-                                                        {m.type === 'Lainnya' && <input type="text" value={m.desc} onChange={ev => setMedsos(medsos.map(x => x.id === m.id ? {...x, desc: ev.target.value} : x))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner mt-0.5" placeholder="Penjelasan Link (Misal: Portofolio)" />}
-                                                        <button onClick={() => setMedsos(medsos.filter(x => x.id !== m.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                        {row.type === 'Lainnya' && (
+                                                            <input type="text" value={row.desc} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner mt-0.5" placeholder="Penjelasan Link" />
+                                                        )}
+                                                        <button onClick={() => setMedsosRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                     </div>
                                                 ))}
                                             </div>
                                             <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setMedsos([...medsos, {id: Date.now(), type: 'Instagram', url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Tautan</button>
+                                                <button onClick={() => setMedsosRows(prev => [...prev, {id: Date.now(), type: 'Instagram', url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Tautan</button>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Accordion: Checkout */}
+                                {/* Checkout Link */}
                                 <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('checkout')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg> Link Checkout</span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'checkout' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    <button onClick={() => toggleAccordion('checkoutPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><ShoppingCartIcon className="text-slate-400 group-hover:text-primaryDark" /> Link Checkout</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'checkoutPanel' ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {activeAccordion === 'checkout' && (
+                                    {openPanel === 'checkoutPanel' && (
                                         <div className="border-t border-slate-200 flex flex-col">
                                             <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-2 pb-1 bg-slate-50">
-                                                {checkouts.map(c => (
-                                                    <div key={c.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                        <input type="text" value={c.url} onChange={ev => setCheckouts(checkouts.map(x => x.id === c.id ? {...x, url: ev.target.value} : x))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-[#C8D100] pr-6" placeholder="URL Target Checkout..." />
-                                                        <input type="text" value={c.text} onChange={ev => setCheckouts(checkouts.map(x => x.id === c.id ? {...x, text: ev.target.value} : x))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Teks Tombol (Misal: Pesan Sekarang)" />
-                                                        <button onClick={() => setCheckouts(checkouts.filter(x => x.id !== c.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                {checkoutRows.map(row => (
+                                                    <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                        <input type="text" value={row.url} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target Checkout..." />
+                                                        <input type="text" value={row.text} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, text: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Teks Tombol (Misal: Pesan Sekarang)" />
+                                                        <button onClick={() => setCheckoutRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                     </div>
                                                 ))}
                                             </div>
                                             <div className="p-2 bg-slate-50 pt-1 shrink-0 border-t border-slate-100">
-                                                <button onClick={() => setCheckouts([...checkouts, {id: Date.now(), url: '', text: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 shadow-sm uppercase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Tambah Checkout</button>
+                                                <button onClick={() => setCheckoutRows(prev => [...prev, {id: Date.now(), url: '', text: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Checkout</button>
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Accordion: Copyright */}
+                                {/* Copyright */}
                                 <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('copyright')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 group-hover:text-[#898F00]"><circle cx="12" cy="12" r="10"/><path d="M14.83 14.83a4 4 0 1 1 0-5.66"/></svg> Hak Cipta (Footer)</span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'copyright' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    <button onClick={() => toggleAccordion('copyrightPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><CopyrightIcon className="text-slate-400 group-hover:text-primaryDark" /> Hak Cipta (Footer)</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'copyrightPanel' ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {activeAccordion === 'copyright' && (
-                                        <div className="border-t border-slate-200 flex flex-col gap-2 p-2 bg-slate-50">
-                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                <input type="checkbox" checked={settings.copyright} onChange={e => setSettings({...settings, copyright: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Sertakan Hak Cipta di Footer</span>
-                                            </label>
-                                            {settings.copyright && (
-                                                <input type="text" value={settings.copyrightName} onChange={e => setSettings({...settings, copyrightName: e.target.value})} placeholder="Nama Entitas (Misal: ELITE STUDIO)" className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded-sm bg-white focus:ring-2 focus:ring-[#C8D100] outline-none transition-all shadow-sm mt-1" />
-                                            )}
+                                    {openPanel === 'copyrightPanel' && (
+                                        <div className="border-t border-slate-200">
+                                            <div className="flex flex-col gap-2 p-2 bg-slate-50">
+                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                    <input type="checkbox" checked={hasCopyright} onChange={e => setHasCopyright(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Sertakan Hak Cipta di Footer</span>
+                                                </label>
+                                                {hasCopyright && (
+                                                    <div className="mt-1">
+                                                        <input type="text" value={copyrightName} onChange={e => setCopyrightName(e.target.value)} placeholder="Nama Entitas (Misal: TOKO KITA)" className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded-sm bg-white focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Accordion: Pengaturan Lainnya */}
+                                {/* Other settings */}
                                 <div className="mb-4 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('other')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-[#898F00] transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#898F00]">
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                            </svg> Pengaturan Lainnya
-                                        </span>
-                                        <svg className={`w-4 h-4 transition-transform duration-300 ${activeAccordion === 'other' ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    <button onClick={() => toggleAccordion('otherPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
+                                        <span className="flex items-center gap-1.5"><SettingsIcon className="text-slate-400 group-hover:text-primaryDark" /> Pengaturan Lainnya</span>
+                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'otherPanel' ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {activeAccordion === 'other' && (
-                                        <div className="border-t border-slate-200 flex flex-col gap-2 p-2 bg-slate-50">
-                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                <input type="checkbox" checked={settings.bioLink} onChange={e => setSettings({...settings, bioLink: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Mode Bio Link / Mini Page</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                <input type="checkbox" checked={settings.darkMode} onChange={e => setSettings({...settings, darkMode: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Responsif Gelap & Terang (Auto Toggle)</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                <input type="checkbox" checked={settings.responsive} onChange={e => setSettings({...settings, responsive: e.target.checked})} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-[#898F00] transition-colors">Responsif Mutlak (Layar PC & HP)</span>
-                                            </label>
+                                    {openPanel === 'otherPanel' && (
+                                        <div className="border-t border-slate-200">
+                                            <div className="flex flex-col gap-2 p-2 bg-slate-50">
+                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                    <input type="checkbox" checked={chkBioLink} onChange={e => setChkBioLink(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Mode Bio Link / Mini Page</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                    <input type="checkbox" checked={chkDarkMode} onChange={e => setChkDarkMode(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Gelap & Terang (Auto Toggle)</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                    <input type="checkbox" checked={chkResponsive} onChange={e => setChkResponsive(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Mutlak (Layar PC & HP)</span>
+                                                </label>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Accordion: Parameter Eksekusi Cepat Bawah Sidebar */}
+                                {/* Generate Params */}
                                 <div className="grid grid-cols-3 gap-2 shrink-0 border-t border-slate-200/60 pt-3 mt-1">
                                     <div className="col-span-1">
                                         <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Quantity</label>
-                                        <input type="number" min="1" max="50" value={params.qty} onChange={e => setParams({...params, qty: e.target.value})} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-[#C8D100] outline-none transition-all shadow-sm" />
+                                        <input type="number" min="1" max="50" value={qty} onChange={e => setQty(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
                                     </div>
                                     <div className="col-span-1">
                                         <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Worker</label>
-                                        <input type="number" min="1" max="10" value={params.worker} onChange={e => setParams({...params, worker: e.target.value})} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-[#C8D100] outline-none transition-all shadow-sm" />
+                                        <input type="number" min="1" max="10" value={workerCount} onChange={e => setWorkerCount(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
                                     </div>
                                     <div className="col-span-1">
                                         <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Delay</label>
-                                        <input type="number" min="0" max="10" value={params.delay} onChange={e => setParams({...params, delay: e.target.value})} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-[#C8D100] outline-none transition-all shadow-sm" />
+                                        <input type="number" min="0" max="10" value={delaySec} onChange={e => setDelaySec(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
                                     </div>
                                     <div className="col-span-3 mt-1">
                                         <div className="flex items-center gap-1.5 mb-0.5">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                            <FileTextIcon className="w-3 h-3" />
                                             <label className="block text-[10px] font-bold text-slate-600 leading-none">Nama Ekspor ZIP (.html)</label>
                                         </div>
-                                        <input type="text" value={params.zipName} onChange={e => setParams({...params, zipName: e.target.value})} placeholder="Dihasilkan AI jika dibiarkan kosong" className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-[#C8D100] outline-none placeholder:text-slate-400 transition-all shadow-sm" />
+                                        <input type="text" placeholder="Dihasilkan AI jika dibiarkan kosong" value={zipName} onChange={e => setZipName(e.target.value)} className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-primary outline-none placeholder:text-slate-400 transition-all shadow-sm" />
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>
 
-                    {/* PANEL STATS BAWAH */}
+                    {/* Bottom Execution Panel */}
                     <div className="shrink-0 p-3 lg:p-4 bg-slate-50 border-t border-slate-200 flex flex-col gap-3 lg:gap-4 z-10">
                         <div className="bg-white rounded-lg border border-slate-200 shadow-sm transition-all overflow-hidden">
                             <div className="grid grid-cols-3 gap-0 border-b border-gray-100 p-2 bg-gray-50">
-                                <div className="flex flex-col items-center justify-center border border-[#C8D100]/20 rounded-lg bg-[#C8D100]/5 py-1.5 shadow-sm transition-all">
-                                    <div className="flex items-center gap-1 mb-1 text-[#898F00]"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span className="text-xs font-medium uppercase leading-none">Selected</span></div>
-                                    <span className="text-xs font-black text-[#898F00] tabular-nums">{displaySelected}</span>
+                                <div className="flex flex-col items-center justify-center border border-primary/20 rounded-lg bg-primary/5 py-1.5 shadow-sm transition-all">
+                                    <div className="flex items-center gap-1 mb-1 text-primaryDark"><ClockIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Selected</span></div>
+                                    <span className="text-xs font-black text-primaryDark tabular-nums">{displaySelected}</span>
                                 </div>
                                 <div className="mx-1.5 flex flex-col items-center justify-center border border-green-200 rounded-lg bg-green-50 py-1.5 shadow-sm transition-all">
-                                    <div className="flex items-center gap-1 mb-1 text-green-600"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> <span className="text-xs font-medium uppercase leading-none">Completed</span></div>
-                                    <span className="text-xs font-black text-green-700 tabular-nums">{successCount}</span>
+                                    <div className="flex items-center gap-1 mb-1 text-green-600"><CheckCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Completed</span></div>
+                                    <span className="text-xs font-black text-green-700 tabular-nums">{countSuccess}</span>
                                 </div>
                                 <div className="flex flex-col items-center justify-center border border-red-200 rounded-lg bg-red-50 py-1.5 shadow-sm transition-all">
-                                    <div className="flex items-center gap-1 mb-1 text-red-600"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> <span className="text-xs font-medium uppercase leading-none">Failed</span></div>
-                                    <span className="text-xs font-black text-red-700 tabular-nums">{failedCount}</span>
+                                    <div className="flex items-center gap-1 mb-1 text-red-600"><XCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Failed</span></div>
+                                    <span className="text-xs font-black text-red-700 tabular-nums">{countFailed}</span>
                                 </div>
                             </div>
                             <div className="p-2 bg-white flex items-center justify-between gap-3">
-                                <button onClick={confirmClearAll} disabled={cards.length === 0 || isGenerating} className="flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold uppercase tracking-wide rounded border transition-colors bg-red-50 text-red-600 border-red-200 hover:bg-red-100 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> CLEAR ALL KARTU
+                                <button onClick={handleClearAll} disabled={cardsState.length === 0 || isGenerating} className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold uppercase tracking-wide rounded border transition-colors ${cardsState.length > 0 && !isGenerating ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'}`}>
+                                    <TrashIcon className="w-3 h-3" /> CLEAR ALL KARTU
                                 </button>
                             </div>
                         </div>
 
-                        {/* Tombol Eksekusi Aksi */}
                         <div className="flex gap-1.5 h-10">
-                            <button onClick={handleStartGeneration} disabled={!promptInput.trim() && cards.length === 0} className={`flex-1 text-xs font-bold rounded-lg border-none flex items-center justify-center gap-2 uppercase tracking-wide truncate transition-all ${isGenerating ? 'bg-[#C8D100]/10 border-transparent shadow-none cursor-default' : promptInput.trim() || cards.length > 0 ? 'bg-[#C8D100] hover:bg-[#898F00] text-slate-900 shadow hover:-translate-y-0.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                {isGenerating ? (
-                                    <><svg className="animate-spin w-4 h-4 text-[#C8D100]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg> <span className="text-[#C8D100]">Memproses...</span></>
-                                ) : (
-                                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg> <span className="text-slate-900">GENERATE</span></>
-                                )}
+                            {isGenerating ? (
+                                <div className="flex-1 text-xs font-bold rounded-lg border-none shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate bg-primary/10 text-primary border-transparent border-0">
+                                    <CustomSpinner /> <span className="uppercase tracking-wide text-primary">Memproses...</span>
+                                </div>
+                            ) : (
+                                <button onClick={() => startGeneration()} disabled={!promptInput.trim() && cardsState.filter(c => c.status === 'pending').length === 0} className={`flex-1 text-xs font-bold rounded-lg border-none flex items-center justify-center gap-2 uppercase tracking-wide truncate transition-all ${promptInput.trim() || cardsState.filter(c => c.status === 'pending').length > 0 ? 'bg-primary hover:bg-primaryDark text-slate-900 shadow hover:-translate-y-0.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                    <SparklesIcon className="w-3.5 h-3.5" /> GENERATE
+                                </button>
+                            )}
+                            
+                            <button onClick={handleTogglePause} disabled={!isGenerating && !isPaused} className={`w-10 flex items-center justify-center rounded-lg border shadow-sm transition-all active:scale-95 shrink-0 ${(!isGenerating && !isPaused) ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : isPaused ? 'bg-green-600 text-white border-green-700 hover:bg-green-700 hover:-translate-y-0.5' : 'bg-amber-100 border-amber-300 text-amber-600 hover:bg-amber-200 hover:-translate-y-0.5'}`}>
+                                {isPaused ? <PlayIcon /> : <PauseIcon />}
                             </button>
                             
-                            <button onClick={handleTogglePause} disabled={!isGenerating && !isPaused} className={`w-10 flex items-center justify-center rounded-lg border shadow-sm transition-all active:scale-95 shrink-0 ${isGenerating && !isPaused ? 'bg-amber-100 border-amber-300 text-amber-600 hover:bg-amber-200 hover:-translate-y-0.5' : isPaused ? 'bg-green-600 text-white border-green-700 hover:bg-green-700 hover:-translate-y-0.5' : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                {isPaused ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>}
-                            </button>
-                            
-                            <button onClick={handleExportZip} disabled={successCount === 0 || isGenerating} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate ${successCount > 0 && !isGenerating ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> <span className="truncate">EKSPOR ZIP</span>
+                            <button onClick={handleDownloadZip} disabled={countSuccess === 0 || isGenerating || isZipping} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate ${(countSuccess > 0 && !isGenerating) ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
+                                {isZipping ? <CustomSpinner className="w-3 h-3 text-white" /> : <DownloadIcon className="w-3 h-3" />} EKSPOR ZIP
                             </button>
                         </div>
                     </div>
                 </aside>
 
-                {/* KANAN: PANEL HASIL */}
+                {/* MAIN GRID */}
                 <section className="flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100">
                     <div className="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 shadow-sm z-10">
                         <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                            {[50, 100, 150, 200, 250].map(sz => (
-                                <button key={sz} onClick={() => {setItemsPerPage(sz); setCurrentPage(1);}} className={`px-2 py-1 rounded border transition ${itemsPerPage === sz ? 'bg-[#C8D100]/10 text-[#898F00] border-[#C8D100]/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}>{sz}</button>
+                            {[50, 100, 150, 200, 250].map(size => (
+                                <button key={size} onClick={() => {setItemsPerPage(size); setCurrentPage(1);}} className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}>{size}</button>
                             ))}
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold text-slate-500">Hal {currentPage} / {totalPages}</span>
                             <div className="flex gap-1">
-                                <button onClick={() => setCurrentPage(p => p-1)} disabled={currentPage === 1} className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg></button>
-                                <button onClick={() => setCurrentPage(p => p+1)} disabled={currentPage === totalPages || totalPages === 0} className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+                                <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"><ChevronDownIcon className="rotate-90" /></button>
+                                <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages || totalPages === 0} className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"><ChevronDownIcon className="-rotate-90" /></button>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex-1 p-4 lg:overflow-y-auto custom-scroll pb-20 lg:pb-4">
-                        <div className="grid gap-4 items-start" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'}}>
-                            {cards.length === 0 ? (
+                        <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                            {cardsState.length === 0 ? (
                                 <div className="col-span-full flex flex-col items-center justify-center text-center w-full h-full min-h-[50vh]">
-                                    <div className="w-20 h-20 bg-[#C8D100]/5 border border-[#C8D100]/20 text-[#C8D100]/60 rounded-full flex items-center justify-center mb-4">
-                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>
-                                    </div>
+                                    <div className="w-20 h-20 bg-primary/5 border border-primary/20 text-primary/60 rounded-full flex items-center justify-center mb-4"><SparklesIcon className="w-8 h-8" /></div>
                                     <h3 className="text-xl font-bold text-slate-700 mb-2">Belum Ada Antrean</h3>
                                     <p className="text-slate-500 text-sm max-w-md">Masukkan prompt di panel pengaturan, atur kuantitas, dan tekan GENERATE.</p>
                                 </div>
                             ) : (
-                                paginatedCards.map((card) => {
+                                paginatedCards.map(card => {
                                     const isDone = card.status === 'done';
-                                    const statusColor = card.status === 'done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
-                                                    card.status === 'processing' ? 'bg-[#C8D100]/10 text-[#898F00] border-[#C8D100]/20' : 
-                                                    card.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200';
+                                    const statusColor = card.status === 'done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : card.status === 'processing' ? 'bg-primary/10 text-primary border-primary/20' : card.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200';
                                     
                                     return (
-                                        <div key={card.id} className={`bg-white hover:shadow-md rounded-lg shadow-sm border flex flex-col transition-all duration-300 ${card.status === 'processing' ? 'border-[#C8D100] ring-2 ring-[#C8D100]/20' : card.status === 'failed' ? 'border-red-300' : 'border-slate-200'}`}>
-                                            <div className="grid grid-cols-4 gap-1.5 p-2 bg-[#C8D100]/5 border-b border-[#C8D100]/10 rounded-t-lg shrink-0">
-                                                <button onClick={() => setPreviewModal({isOpen: true, code: card.code, mode: 'desktop', id: card.id})} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-[#C8D100]/20 text-[#898F00] hover:bg-[#C8D100]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span>
-                                                </button>
-                                                <button onClick={() => copyCode(card.code)} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-[#C8D100]/20 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span>
-                                                </button>
-                                                <button onClick={() => setEditModal({isOpen: true, id: card.id, code: card.code, history: [card.code], historyIndex: 0, tab: 'code', instruction: '', isRevising: false})} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-amber-50 border-amber-200 text-amber-600 hover:brightness-95 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span>
-                                                </button>
-                                                <button onClick={() => setCards(prev => prev.filter(c => c.id !== card.id))} disabled={card.status === 'processing'} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-[#C8D100]/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span>
-                                                </button>
+                                        <div key={card.id} className={`bg-white hover:shadow-md rounded-lg shadow-sm border flex flex-col transition-all duration-300 ${card.status === 'processing' ? 'border-primary ring-2 ring-primary/20' : card.status === 'failed' ? 'border-red-300' : 'border-slate-200'}`}>
+                                            <div className="grid grid-cols-4 gap-1.5 p-2 bg-primary/5 border-b border-primary/10 rounded-t-lg shrink-0">
+                                                <button onClick={() => { setPreviewCard(card); setPreviewDevice('desktop'); }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EyeIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span></button>
+                                                <button onClick={() => { copyToClipboard(card.code); setAlertData({title:"Sukses!", desc:"Kode HTML disalin ke Clipboard."}) }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><CopyIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span></button>
+                                                <button onClick={() => handleOpenEdit(card)} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-amber-50 border-amber-200 text-amber-600 hover:brightness-95 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EditIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span></button>
+                                                <button onClick={() => setConfirmData({title:"Hapus Kartu?", desc:"Kartu dan kode ini akan dihapus permanen.", action:()=>setCardsState(prev=>prev.filter(c=>c.id!==card.id))})} disabled={card.status === 'processing'} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><TrashIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span></button>
                                             </div>
-                                            
                                             <div className="p-2 border-b border-slate-100 flex justify-between items-center gap-2 shrink-0 bg-white">
-                                                <p className="text-[11px] font-bold text-slate-800 truncate" title={card.title}>{card.title}</p>
+                                                <p className="text-[11px] font-bold text-slate-800 truncate">{card.title}</p>
                                                 <span className={`text-[8px] font-black tracking-widest px-1.5 py-0.5 rounded border whitespace-nowrap ${statusColor}`}>{card.status.toUpperCase()}</span>
                                             </div>
-
                                             <div className="p-2 flex gap-2 h-[150px] bg-white rounded-b-lg relative">
-                                                <div className="flex-1 rounded-lg overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-200 cursor-pointer group" onClick={() => isDone && setPreviewModal({isOpen: true, code: card.code, mode: 'desktop', id: card.id})}>
-                                                    {isDone ? (
+                                                <div className="flex-1 rounded-lg overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-200 cursor-pointer group" onClick={() => isDone && setPreviewCard(card)}>
+                                                    {card.status === 'done' ? (
                                                         <>
-                                                            <div className="absolute inset-0 w-full h-full bg-transparent"><iframe srcDoc={card.code} className="absolute inset-0 w-full h-full border-none pointer-events-none scale-[0.35] origin-top-left" style={{width: '285%', height: '285%'}} scrolling="no"></iframe></div>
-                                                            <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/40 transition-all flex items-center justify-center"><svg className="text-white w-8 h-8 drop-shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></div>
+                                                            <div className="absolute inset-0 w-full h-full bg-transparent"><iframe srcDoc={card.code} className="absolute inset-0 w-full h-full border-none pointer-events-none scale-[0.35] origin-top-left" style={{width: '285%', height: '285%'}} scrolling="no" /></div>
+                                                            <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/40 transition-all flex items-center justify-center"><PlayIcon className="text-white w-8 h-8 drop-shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all" /></div>
                                                         </>
                                                     ) : card.status === 'failed' ? (
-                                                        <div className="p-2 text-center text-red-500"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto mb-1"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div className="text-[8px] font-bold break-words px-2 leading-tight">{card.error || 'Gagal'}</div></div>
+                                                        <div className="p-2 text-center text-red-500"><AlertTriangleIcon className="mx-auto mb-1 w-6 h-6" /><div className="text-[8px] font-bold break-words px-2 leading-tight">{card.error || 'Gagal'}</div></div>
                                                     ) : card.status === 'processing' ? (
-                                                        <div className="flex flex-col items-center text-[#C8D100]"><svg className="animate-spin w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></div>
+                                                        <div className="flex flex-col items-center text-primary"><CustomSpinner className="w-6 h-6 mb-1" /></div>
                                                     ) : (
-                                                        <div className="text-slate-400"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div>
+                                                        <div className="text-slate-400"><CodeIcon className="w-6 h-6" /></div>
                                                     )}
                                                 </div>
                                                 <div className="flex-1 border border-slate-200 rounded-lg bg-slate-50 flex flex-col overflow-hidden">
-                                                    <div className="p-1 border-b border-slate-200 bg-slate-100 sticky top-0 shrink-0">
-                                                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block text-center">HTML Code</span>
-                                                    </div>
+                                                    <div className="p-1 border-b border-slate-200 bg-slate-100 sticky top-0 shrink-0"><span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block text-center">HTML Code</span></div>
                                                     <div className="p-1.5 overflow-y-auto custom-scroll flex-1 bg-white">
-                                                        {card.status === 'processing' || (!card.code && card.status !== 'failed') ? (
+                                                        {card.status === 'processing' || card.status === 'pending' ? (
                                                             <p className="text-[12px] text-slate-500 font-bold tracking-wide text-center h-full flex items-center justify-center">Memproses<span className="dot-anim inline-block w-4 text-left"></span></p>
-                                                        ) : card.code ? (
-                                                            <pre className="text-[7px] text-slate-700 font-mono leading-tight whitespace-pre-wrap break-words"><code>{card.code.substring(0, 300)}...</code></pre>
-                                                        ) : null}
+                                                        ) : (
+                                                            <pre className="text-[7px] text-slate-700 font-mono leading-tight whitespace-pre-wrap break-words"><code>{card.code ? card.code.substring(0, 300) + '...' : ''}</code></pre>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -770,85 +794,68 @@ export default function App() {
                 </section>
             </main>
 
-            {/* Modal Preview Full Layar */}
-            {previewModal.isOpen && (
-                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 p-2 sm:p-4 md:p-8 backdrop-blur-sm transition-opacity" onClick={() => setPreviewModal(prev => ({...prev, isOpen: false}))}>
+            {/* PREVIEW MODAL */}
+            {previewCard && (
+                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 p-2 sm:p-4 md:p-8 backdrop-blur-sm transition-opacity" onClick={() => setPreviewCard(null)}>
                     <div className="relative flex flex-col w-full h-full max-w-5xl mx-auto transition-all duration-300" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setPreviewModal(prev => ({...prev, isOpen: false}))} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-2 shadow-xl hover:bg-red-600 hover:scale-110 transition-transform z-[110]">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                        </button>
+                        <button onClick={() => setPreviewCard(null)} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-2 shadow-xl hover:bg-red-600 hover:scale-110 transition-transform z-[110]"><XCircleIcon className="w-5 h-5" /></button>
                         <div className="bg-white shadow-2xl flex flex-col rounded-xl overflow-hidden w-full h-full relative">
                             <div className="bg-white p-3 border-b border-slate-200 shrink-0">
                                 <div className="flex gap-2 p-1 bg-slate-100 rounded-lg w-full h-[40px] border border-slate-200">
-                                    <button onClick={() => setPreviewModal(prev => ({...prev, mode: 'desktop'}))} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewModal.mode === 'desktop' ? 'bg-white text-[#898F00] shadow-sm border border-[#C8D100]/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> PC
-                                    </button>
-                                    <button onClick={() => setPreviewModal(prev => ({...prev, mode: 'mobile'}))} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewModal.mode === 'mobile' ? 'bg-white text-[#898F00] shadow-sm border border-[#C8D100]/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> HP
-                                    </button>
-                                    <button onClick={() => { const blob = new Blob([previewModal.code], { type: 'text/html' }); window.open(URL.createObjectURL(blob), '_blank'); }} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> BUKA TAB BARU
-                                    </button>
+                                    <button onClick={() => setPreviewDevice('desktop')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewDevice === 'desktop' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><MonitorIcon className="w-3.5 h-3.5" /> PC</button>
+                                    <button onClick={() => setPreviewDevice('mobile')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewDevice === 'mobile' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><SmartphoneIcon className="w-3.5 h-3.5" /> HP</button>
+                                    <button onClick={() => {const blob = new Blob([previewCard.code], { type: 'text/html' }); window.open(URL.createObjectURL(blob), '_blank');}} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white"><ExternalLinkIcon className="w-3.5 h-3.5" /> PBLSH</button>
                                 </div>
                             </div>
                             <div className="flex-1 w-full bg-slate-200 p-4 flex items-center justify-center overflow-hidden">
-                                <iframe srcDoc={previewModal.code} className="bg-white shadow-lg h-full border-none rounded-md transition-all duration-300" style={{width: previewModal.mode === 'mobile' ? '375px' : '100%'}} sandbox="allow-scripts allow-same-origin"></iframe>
+                                <iframe srcDoc={previewCard.code} className="bg-white shadow-lg h-full border-none rounded-md transition-all" style={{width: previewDevice === 'mobile' ? '375px' : '100%'}} sandbox="allow-scripts allow-same-origin" />
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Modal Edit & Revisi AI */}
-            {editModal.isOpen && (
-                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 p-2 sm:p-4 md:p-8 backdrop-blur-sm transition-opacity" onClick={() => setEditModal(prev => ({...prev, isOpen: false}))}>
+            {/* EDIT MODAL */}
+            {editCardId && (
+                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 p-2 sm:p-4 md:p-8 backdrop-blur-sm transition-opacity" onClick={() => setEditCardId(null)}>
                     <div className="relative flex flex-col w-full h-full max-w-4xl mx-auto transition-all duration-300" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-end mb-2 px-1">
                             <div className="flex items-center gap-2">
-                                <button onClick={() => { if(editModal.historyIndex > 0) setEditModal(p => ({...p, historyIndex: p.historyIndex - 1, code: p.history[p.historyIndex - 1]})); }} disabled={editModal.historyIndex <= 0} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
-                                <button onClick={() => { if(editModal.historyIndex < editModal.history.length - 1) setEditModal(p => ({...p, historyIndex: p.historyIndex + 1, code: p.history[p.historyIndex + 1]})); }} disabled={editModal.historyIndex >= editModal.history.length - 1} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
+                                <button onClick={undoEdit} disabled={editHistoryIndex <= 0} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"><UndoIcon /></button>
+                                <button onClick={redoEdit} disabled={editHistoryIndex >= editHistoryStack.length - 1} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"><RedoIcon /></button>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => setEditModal(prev => ({...prev, isOpen: false}))} className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 transition shadow-md">Batal</button>
-                                <button onClick={handleEditSave} className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-900 bg-[#C8D100] hover:bg-[#898F00] shadow-md transition">Simpan Edit</button>
+                                <button onClick={() => setEditCardId(null)} className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 transition shadow-md">Batal</button>
+                                <button onClick={() => { setCardsState(prev => prev.map(c => c.id === editCardId ? {...c, code: editCodeArea} : c)); setEditCardId(null); }} className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-900 bg-primary hover:bg-primaryDark shadow-md transition">Simpan</button>
                             </div>
                         </div>
                         <div className="bg-white shadow-2xl flex flex-col rounded-xl overflow-hidden w-full h-full relative">
-                            {editModal.isRevising && (
+                            {isEditingRevising && (
                                 <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg">
-                                    <svg className="animate-spin w-10 h-10 text-[#C8D100] mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                                    <CustomSpinner className="w-10 h-10 text-primary mb-3" />
                                     <p className="text-sm font-bold text-slate-700 tracking-wider">AI sedang merevisi kode...</p>
                                 </div>
                             )}
                             <div className="bg-white p-3 border-b border-slate-200 shrink-0">
                                 <div className="flex gap-2 p-1 bg-slate-100 rounded-lg w-full h-[40px] border border-slate-200">
-                                    <button onClick={() => setEditModal(prev => ({...prev, tab: 'code'}))} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${editModal.tab === 'code' ? 'bg-white text-[#898F00] shadow-sm border border-[#C8D100]/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg><span>Kode</span>
-                                    </button>
-                                    <button onClick={() => setEditModal(prev => ({...prev, tab: 'preview'}))} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${editModal.tab === 'preview' ? 'bg-white text-[#898F00] shadow-sm border border-[#C8D100]/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>Preview</span>
-                                    </button>
+                                    <button onClick={() => setEditTab('code')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${editTab === 'code' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><CodeIcon className="w-3.5 h-3.5" /><span>Kode</span></button>
+                                    <button onClick={() => setEditTab('preview')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${editTab === 'preview' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><EyeIcon className="w-3.5 h-3.5" /><span>Preview</span></button>
                                 </div>
                             </div>
                             <div className="p-3 w-full bg-white flex-1 flex flex-col min-h-0 relative">
-                                {editModal.tab === 'code' ? (
+                                {editTab === 'code' ? (
                                     <div className="w-full h-full flex flex-col">
                                         <div className="flex-1 w-full bg-[#f8fafc] border border-[#cbd5e1] rounded-lg overflow-hidden relative">
-                                            <textarea spellCheck="false" value={editModal.code} onChange={e => {
-                                                const val = e.target.value;
-                                                let newHist = editModal.history.slice(0, editModal.historyIndex + 1);
-                                                newHist.push(val);
-                                                setEditModal(p => ({...p, code: val, history: newHist, historyIndex: newHist.length - 1}));
-                                            }} className="absolute inset-0 w-full h-full bg-transparent text-slate-700 font-mono text-[10px] sm:text-[11px] p-4 outline-none resize-none custom-scroll leading-relaxed"></textarea>
+                                            <textarea spellCheck="false" value={editCodeArea} onChange={handleEditInput} className="absolute inset-0 w-full h-full bg-transparent text-slate-700 font-mono text-[10px] sm:text-[11px] p-4 outline-none resize-none custom-scroll leading-relaxed" />
                                         </div>
-                                        <div className="mt-[12px] h-[44px] w-full bg-white border border-[#C8D100] rounded-lg px-2 flex items-center gap-2 shrink-0 shadow-sm relative z-10 box-border">
-                                            <input type="text" value={editModal.instruction} onChange={e => setEditModal(p => ({...p, instruction: e.target.value}))} onKeyDown={e => e.key === 'Enter' && handleRevisiAI()} placeholder="Instruksi revisi ke AI (Misal: 'Ubah warna tombol jadi merah')..." className="flex-1 bg-transparent text-xs text-slate-700 outline-none px-2 placeholder:text-slate-400 h-full" />
-                                            <button onClick={handleRevisiAI} className="w-[28px] h-[28px] shrink-0 flex items-center justify-center rounded-md bg-[#C8D100] text-slate-900 hover:bg-[#898F00] transition-colors shadow-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+                                        <div className="mt-[12px] h-[44px] w-full bg-white border border-primary rounded-lg px-2 flex items-center gap-2 shrink-0 shadow-sm relative z-10 box-border">
+                                            <input type="text" placeholder="Instruksi revisi, misal: 'Ubah warna background jadi merah'..." value={editChatInput} onChange={e => setEditChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRequestRevisi()} className="flex-1 bg-transparent text-xs text-slate-700 outline-none px-2 placeholder:text-slate-400 h-full" />
+                                            <button onClick={handleRequestRevisi} className="w-[28px] h-[28px] shrink-0 flex items-center justify-center rounded-md bg-primary text-slate-900 hover:bg-primaryDark transition-colors shadow-sm"><SendIcon className="w-3 h-3" /></button>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="w-full h-full bg-slate-200 border border-slate-300 rounded-lg p-2 overflow-y-auto custom-scroll">
-                                        <iframe srcDoc={editModal.code} className="w-full min-h-full bg-white shadow-sm border-none rounded block" sandbox="allow-scripts allow-same-origin"></iframe>
+                                        <iframe srcDoc={editCodeArea} className="w-full min-h-full bg-white shadow-sm border-none rounded block" sandbox="allow-scripts allow-same-origin" />
                                     </div>
                                 )}
                             </div>
@@ -857,29 +864,29 @@ export default function App() {
                 </div>
             )}
 
-            {/* Modal Confirm Dialog */}
-            {confirmModal.isOpen && (
+            {/* CONFIRM MODAL */}
+            {confirmData && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm flex flex-col items-center text-center">
-                        <div className="bg-red-100 text-red-600 p-3 rounded-full mb-3"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-                        <h3 className="text-lg font-bold text-slate-800">{confirmModal.title}</h3>
-                        <p className="text-sm text-slate-600 mt-2 mb-6" dangerouslySetInnerHTML={{__html: confirmModal.desc}}></p>
+                        <div className="bg-red-100 text-red-600 p-3 rounded-full mb-3"><AlertTriangleIcon className="w-8 h-8" /></div>
+                        <h3 className="text-lg font-bold text-slate-800">{confirmData.title}</h3>
+                        <p className="text-sm text-slate-600 mt-2 mb-6" dangerouslySetInnerHTML={{__html: confirmData.desc}} />
                         <div className="flex w-full gap-3">
-                            <button onClick={() => setConfirmModal({isOpen: false})} className="flex-1 bg-slate-200 text-slate-700 font-bold py-2 rounded hover:bg-slate-300 transition text-xs shadow-sm">Batal</button>
-                            <button onClick={() => { confirmModal.onConfirm(); setConfirmModal({isOpen: false}); }} className="flex-1 bg-red-600 text-white font-bold py-2 rounded hover:bg-red-700 transition shadow-sm text-xs">Ya</button>
+                            <button onClick={() => setConfirmData(null)} className="flex-1 bg-slate-200 text-slate-700 font-bold py-2 rounded hover:bg-slate-300 transition text-xs shadow-sm">Batal</button>
+                            <button onClick={() => { confirmData.action(); setConfirmData(null); }} className="flex-1 bg-red-600 text-white font-bold py-2 rounded hover:bg-red-700 transition shadow-sm text-xs">Ya</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Modal Alert Box */}
-            {alertModal.isOpen && (
+            {/* ALERT MODAL */}
+            {alertData && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm flex flex-col items-center text-center">
-                        <div className="bg-amber-100 text-amber-600 p-3 rounded-full mb-3"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-                        <h3 className="text-lg font-bold text-slate-800">{alertModal.title}</h3>
-                        <p className="text-sm text-slate-600 mt-2 mb-6">{alertModal.desc}</p>
-                        <button onClick={() => setAlertModal({isOpen: false})} className="w-full bg-[#C8D100] text-slate-900 font-bold py-2 rounded-lg hover:bg-[#898F00] transition shadow-sm">Tutup</button>
+                        <div className="bg-amber-100 text-amber-600 p-3 rounded-full mb-3"><AlertTriangleIcon className="w-8 h-8" /></div>
+                        <h3 className="text-lg font-bold text-slate-800">{alertData.title}</h3>
+                        <p className="text-sm text-slate-600 mt-2 mb-6">{alertData.desc}</p>
+                        <button onClick={() => setAlertData(null)} className="w-full bg-primary text-slate-900 font-bold py-2 rounded-lg hover:bg-primaryDark transition shadow-sm">Tutup</button>
                     </div>
                 </div>
             )}
