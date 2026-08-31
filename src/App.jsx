@@ -735,11 +735,6 @@ export default function App() {
                     <div className="flex-1 flex flex-col overflow-y-visible lg:overflow-y-auto overflow-x-hidden custom-scroll lg:pb-6 pb-0">
                         <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 mb-1">
                             
-                            <div className="flex gap-2 w-full">
-                                <button className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200"><MonitorIcon /> Panduan</button>
-                                <button className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primaryDark text-slate-900 font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200"><ExternalLinkIcon /> Bantuan</button>
-                            </div>
-
                             {/* PANEL USER AKTIF */}
                             <div className="flex items-center justify-between p-3 bg-white border border-primary/30 rounded-lg shadow-sm">
                                 <div className="flex items-center gap-2 overflow-hidden">
