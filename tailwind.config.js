@@ -4,18 +4,17 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
-      // Mengambil warna utama dari desain HTML sebelumnya
-      colors: {
-        primary: '#C8D100',
-        primaryDark: '#898F00'
+      colors: { 
+        primary: '#C8D100', 
+        primaryDark: '#898F00' 
       },
-      // Menggunakan font Share Tech sebagai default UI
-      fontFamily: {
-        sans: ['Share Tech', 'sans-serif']
+      fontFamily: { 
+        sans: ['Share Tech', 'sans-serif'] 
       }
-    },
+    }
   },
   plugins: [],
 }
