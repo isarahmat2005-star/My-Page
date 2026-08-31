@@ -795,21 +795,34 @@ export default function App() {
                                 </div>
 
                                 {/* Font Options */}
-                                <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
-                                    <button onClick={() => toggleAccordion('fontPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
-                                        <span className="flex items-center gap-1.5"><TypeIcon className="text-slate-400 group-hover:text-primaryDark" /> Pilihan Font</span>
-                                        <ChevronDownIcon className={`transition-transform duration-300 ${openPanel === 'fontPanel' ? 'rotate-180' : ''}`} />
+                                <div className="mb-3">
+                                    <button 
+                                        onClick={() => toggleAccordion('fontPanel')} 
+                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                            <TypeIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pilihan Font
+                                        </span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'fontPanel' ? 'rotate-180' : ''}`} />
                                     </button>
+                                    
                                     {openPanel === 'fontPanel' && (
-                                        <div className="border-t border-slate-200 pb-2">
-                                            <div className="flex flex-col gap-2 p-2 pb-0">
+                                        <div className="mt-2 flex flex-col gap-2">
+                                            <div className="bg-white border border-slate-200 rounded p-3 flex flex-col gap-2 shadow-sm">
                                                 {['all', 'judul', 'subjudul', 'isi', 'tombol'].map(target => {
                                                     const isLocked = target !== 'all' && currentFonts.all !== 'None';
                                                     return (
                                                         <div key={target} className="flex items-center justify-between gap-2 relative">
                                                             <span className="text-[10px] font-bold text-slate-500 w-16 shrink-0 uppercase">{target}</span>
-                                                            <button onClick={() => !isLocked && setOpenFontDropdown(openFontDropdown === target ? null : target)} disabled={isLocked} className={`flex-1 flex justify-between items-center bg-white border border-slate-200 rounded p-1.5 transition shadow-sm text-left outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}>
-                                                                <span className={isLocked || currentFonts[target] === 'None' ? "text-[11px] truncate text-slate-400 italic" : "text-[11px] truncate font-bold text-slate-800"} style={{fontFamily: currentFonts[target] !== 'None' && !isLocked ? `'${currentFonts[target]}', sans-serif` : 'inherit'}}>
+                                                            <button 
+                                                                onClick={() => !isLocked && setOpenFontDropdown(openFontDropdown === target ? null : target)} 
+                                                                disabled={isLocked} 
+                                                                className={`flex-1 flex justify-between items-center bg-white border border-slate-200 rounded p-1.5 transition shadow-sm text-left outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}
+                                                            >
+                                                                <span 
+                                                                    className={isLocked || currentFonts[target] === 'None' ? "text-[11px] truncate text-slate-400 italic" : "text-[11px] truncate font-bold text-slate-800"} 
+                                                                    style={{fontFamily: currentFonts[target] !== 'None' && !isLocked ? `'${currentFonts[target]}', sans-serif` : 'inherit'}}
+                                                                >
                                                                     {isLocked ? "Terkunci (Ikut All Page)" : currentFonts[target]}
                                                                 </span>
                                                                 <ChevronDownIcon className="w-3 h-3 text-slate-400 shrink-0" />
@@ -829,7 +842,7 @@ export default function App() {
                                         </div>
                                     )}
                                 </div>
-
+                                
                                 {/* Colors */}
                                 <div className="mb-2 bg-slate-50 border border-slate-200 rounded-md">
                                     <button onClick={() => toggleAccordion('colorPanel')} className="w-full flex justify-between items-center text-[11px] font-bold text-slate-700 hover:text-primaryDark transition-colors outline-none group p-2">
