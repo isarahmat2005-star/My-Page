@@ -19,7 +19,7 @@ export default async function handler(req, res) {
             allowOverwrite: true,
         });
 
-        return res.status(200).json({ url: `/api/page?id=${id}` });
+        return res.status(200).json({ url: `/p/${id}` });
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
