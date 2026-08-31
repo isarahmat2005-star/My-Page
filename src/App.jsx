@@ -7,7 +7,7 @@ import {
     SettingsIcon, UndoIcon, RedoIcon, SendIcon, ImageIcon,
     ExternalLinkIcon, SmartphoneIcon, MonitorIcon, PlusIcon,
     PaletteIcon, LinkIcon, ShoppingCartIcon, CopyrightIcon,
-    CodeIcon, TypeIcon
+    CodeIcon, TypeIcon, EditIcon, FileTextIcon, ClockIcon
 } from './icons.jsx';
 import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './utils.js';
 
@@ -334,13 +334,29 @@ export default function App() {
         setEditTab('code');
     };
 
-    const handleEditInput = (e) => {
+        const handleEditInput = (e) => {
         const val = e.target.value;
         setEditCodeArea(val);
         const newStack = editHistoryStack.slice(0, editHistoryIndex + 1);
         newStack.push(val);
         setEditHistoryStack(newStack);
         setEditHistoryIndex(newStack.length - 1);
+    };
+
+    const undoEdit = () => {
+        if (editHistoryIndex > 0) {
+            const newIndex = editHistoryIndex - 1;
+            setEditHistoryIndex(newIndex);
+            setEditCodeArea(editHistoryStack[newIndex]);
+        }
+    };
+
+    const redoEdit = () => {
+        if (editHistoryIndex < editHistoryStack.length - 1) {
+            const newIndex = editHistoryIndex + 1;
+            setEditHistoryIndex(newIndex);
+            setEditCodeArea(editHistoryStack[newIndex]);
+        }
     };
 
     const handleRequestRevisi = async () => {
