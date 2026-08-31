@@ -280,6 +280,21 @@ export default function App() {
     const abortControllerRef = useRef(null);
     const cardsSyncTimeout = useRef(null);
 
+    // === TAB NAVIGATION STATE ===
+    const [sidebarTab, setSidebarTab] = useState('frontend'); // 'frontend' | 'editor'
+
+    // === EDITOR STATES (Adaptasi dari my_page_editor.html) ===
+    const [fileSystem, setFileSystem] = useState({ 'index.html': { content: '' } });
+    const [activeFile, setActiveFile] = useState('index.html');
+    const [editorChat, setEditorChat] = useState([
+        { role: 'ai', text: 'Halo! Saya adalah <strong>Editor My Page</strong>. Berikan instruksi di bawah, atau gunakan menu (+) untuk fitur otomatis.' }
+    ]);
+    const [editorPrompt, setEditorPrompt] = useState('');
+    const [editorAttachments, setEditorAttachments] = useState([]);
+    const [showEditorActionMenu, setShowEditorActionMenu] = useState(false);
+    const [workspaceTab, setWorkspaceTab] = useState('preview'); // 'preview' | 'code'
+    const [previewSize, setPreviewSize] = useState('100%'); // '100%' (PC) | '375px' (HP)
+
     useEffect(() => { cardsStateRef.current = cardsState; }, [cardsState]);
     
     useEffect(() => {
@@ -856,10 +871,10 @@ export default function App() {
                 {/* SIDEBAR */}
                 <aside className="w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative">
                     <div className="flex-1 flex flex-col overflow-y-visible lg:overflow-y-auto overflow-x-hidden custom-scroll lg:pb-6 pb-0">
-                        <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 mb-1">
+                        <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 mb-1 h-full">
                             
                             {/* PANEL USER AKTIF */}
-                            <div className="flex items-center justify-between p-3 bg-white border border-primary/30 rounded-lg shadow-sm">
+                            <div className="flex items-center justify-between p-3 bg-white border border-primary/30 rounded-lg shadow-sm shrink-0">
                                 <div className="flex items-center gap-2 overflow-hidden">
                                     <div className="w-8 h-8 rounded-full bg-primary/10 text-primaryDark flex items-center justify-center shrink-0">
                                         <UserIcon className="w-4 h-4" />
@@ -881,341 +896,364 @@ export default function App() {
                                 </div>
                             </div>
 
-                            <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
-                                <div className="mb-3">
-                                    <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Deskripsi Produk/Halaman <span className="text-red-500">*</span></label>
-                                    <textarea rows="2" placeholder="Tuliskan deskripsi utama landing page Anda..." value={promptInput} onChange={e => setPromptInput(e.target.value)} className={`${inputClass} h-16 resize-none custom-scroll py-2 px-2.5`} />
-                                </div>
-                                
-                                <div className="mb-4">
-                                    <label className="block text-[11px] font-bold text-slate-500 mb-0.5">Instruksi Khusus (Opsional)</label>
-                                    <textarea rows="2" placeholder="Misal: 'Wajib ada form testimoni'..." value={extraInstructions} onChange={e => setExtraInstructions(e.target.value)} className={`${inputClass} h-12 resize-none custom-scroll py-2 px-2.5`} />
-                                </div>
+                            {/* --- TOMBOL TAB NAVIGASI --- */}
+                            <div className="flex bg-slate-200/70 p-1 rounded-lg gap-1 border border-slate-200 shrink-0">
+                                <button 
+                                    onClick={() => setSidebarTab('frontend')} 
+                                    className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'frontend' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                                >
+                                    <SparklesIcon className="w-3.5 h-3.5" /> Generator
+                                </button>
+                                <button 
+                                    onClick={() => setSidebarTab('editor')} 
+                                    className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                                >
+                                    <CodeIcon className="w-3.5 h-3.5" /> Editor IDE
+                                </button>
+                            </div>
 
-                                {/* Font Options */}
-                                <div className="mb-3">
-                                    <button 
-                                        onClick={() => toggleAccordion('fontPanel')} 
-                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                            <TypeIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pilihan Font
-                                        </span>
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'fontPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
+                            {/* ========================================= */}
+                            {/* KONTEN TAB 1: FRONT END (GENERATOR KARTU) */}
+                            {/* ========================================= */}
+                            {sidebarTab === 'frontend' && (
+                                <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
+                                    <div className="mb-3">
+                                        <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Deskripsi Produk/Halaman <span className="text-red-500">*</span></label>
+                                        <textarea rows="2" placeholder="Tuliskan deskripsi utama landing page Anda..." value={promptInput} onChange={e => setPromptInput(e.target.value)} className={`${inputClass} h-16 resize-none custom-scroll py-2 px-2.5`} />
+                                    </div>
                                     
-                                    {openPanel === 'fontPanel' && (
-                                        <div className="mt-2 flex flex-col gap-2">
-                                            <div className="bg-white border border-slate-200 rounded p-3 flex flex-col gap-2 shadow-sm">
-                                                {['all', 'judul', 'subjudul', 'isi', 'tombol'].map(target => {
-                                                    const isLocked = target !== 'all' && currentFonts.all !== 'None';
-                                                    return (
-                                                        <div key={target} className="flex items-center justify-between gap-2 relative">
-                                                            <span className="text-[10px] font-bold text-slate-500 w-16 shrink-0 uppercase">{target}</span>
-                                                            <button 
-                                                                onClick={() => !isLocked && setOpenFontDropdown(openFontDropdown === target ? null : target)} 
-                                                                disabled={isLocked} 
-                                                                className={`flex-1 flex justify-between items-center bg-white border border-slate-200 rounded p-1.5 transition shadow-sm text-left outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}
-                                                            >
-                                                                <span 
-                                                                    className={isLocked || currentFonts[target] === 'None' ? "text-[11px] truncate text-slate-400 italic" : "text-[11px] truncate font-bold text-slate-800"} 
-                                                                    style={{fontFamily: currentFonts[target] !== 'None' && !isLocked ? `'${currentFonts[target]}', sans-serif` : 'inherit'}}
-                                                                >
-                                                                    {isLocked ? "Terkunci (Ikut All Page)" : currentFonts[target]}
-                                                                </span>
-                                                                <ChevronDownIcon className="w-3 h-3 text-slate-400 shrink-0" />
-                                                            </button>
-                                                            {openFontDropdown === target && (
-                                                                <div className="absolute top-full right-0 w-[calc(100%-4rem)] max-h-[200px] overflow-y-auto bg-white border border-slate-200 rounded shadow-xl z-50 custom-scroll mt-1">
-                                                                    <div onClick={() => handleFontSelect(target, 'None')} className="p-2 border-b border-slate-100 hover:bg-red-50 cursor-pointer text-red-500 font-bold text-[10px] uppercase">NONE</div>
-                                                                    {FONTS.map(f => (
-                                                                        <div key={f.id} onClick={() => handleFontSelect(target, f.id)} className="p-2 border-b border-slate-100 hover:bg-primary/10 cursor-pointer text-slate-800 text-[14px]" style={{fontFamily: `'${f.id}', sans-serif`}}>{f.name}</div>
-                                                                    ))}
+                                    <div className="mb-4">
+                                        <label className="block text-[11px] font-bold text-slate-500 mb-0.5">Instruksi Khusus (Opsional)</label>
+                                        <textarea rows="2" placeholder="Misal: 'Wajib ada form testimoni'..." value={extraInstructions} onChange={e => setExtraInstructions(e.target.value)} className={`${inputClass} h-12 resize-none custom-scroll py-2 px-2.5`} />
+                                    </div>
+
+                                    {/* Font Options */}
+                                    <div className="mb-3">
+                                        <button onClick={() => toggleAccordion('fontPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><TypeIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pilihan Font</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'fontPanel' ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openPanel === 'fontPanel' && (
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <div className="bg-white border border-slate-200 rounded p-3 flex flex-col gap-2 shadow-sm">
+                                                    {['all', 'judul', 'subjudul', 'isi', 'tombol'].map(target => {
+                                                        const isLocked = target !== 'all' && currentFonts.all !== 'None';
+                                                        return (
+                                                            <div key={target} className="flex items-center justify-between gap-2 relative">
+                                                                <span className="text-[10px] font-bold text-slate-500 w-16 shrink-0 uppercase">{target}</span>
+                                                                <button onClick={() => !isLocked && setOpenFontDropdown(openFontDropdown === target ? null : target)} disabled={isLocked} className={`flex-1 flex justify-between items-center bg-white border border-slate-200 rounded p-1.5 transition shadow-sm text-left outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}>
+                                                                    <span className={isLocked || currentFonts[target] === 'None' ? "text-[11px] truncate text-slate-400 italic" : "text-[11px] truncate font-bold text-slate-800"} style={{fontFamily: currentFonts[target] !== 'None' && !isLocked ? `'${currentFonts[target]}', sans-serif` : 'inherit'}}>
+                                                                        {isLocked ? "Terkunci (Ikut All Page)" : currentFonts[target]}
+                                                                    </span>
+                                                                    <ChevronDownIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                </button>
+                                                                {openFontDropdown === target && (
+                                                                    <div className="absolute top-full right-0 w-[calc(100%-4rem)] max-h-[200px] overflow-y-auto bg-white border border-slate-200 rounded shadow-xl z-50 custom-scroll mt-1">
+                                                                        <div onClick={() => handleFontSelect(target, 'None')} className="p-2 border-b border-slate-100 hover:bg-red-50 cursor-pointer text-red-500 font-bold text-[10px] uppercase">NONE</div>
+                                                                        {FONTS.map(f => (
+                                                                            <div key={f.id} onClick={() => handleFontSelect(target, f.id)} className="p-2 border-b border-slate-100 hover:bg-primary/10 cursor-pointer text-slate-800 text-[14px]" style={{fontFamily: `'${f.id}', sans-serif`}}>{f.name}</div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Colors */}
+                                    <div className="mb-3">
+                                        <button onClick={() => toggleAccordion('colorPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><PaletteIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Palet Warna</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'colorPanel' ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openPanel === 'colorPanel' && (
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                    <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                        {colorRows.map(row => (
+                                                            <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                                <div className="flex gap-2 items-center">
+                                                                    <input type="color" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-6 h-6 p-0 border-0 rounded-sm cursor-pointer shrink-0" />
+                                                                    <input type="text" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-20 text-[10px] font-mono font-bold p-1 border border-slate-200 rounded-sm bg-slate-50 outline-none focus:border-primary uppercase text-center" />
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {/* Colors */}
-                                <div className="mb-3">
-                                    <button 
-                                        onClick={() => toggleAccordion('colorPanel')} 
-                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                            <PaletteIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Palet Warna
-                                        </span>
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'colorPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    
-                                    {openPanel === 'colorPanel' && (
-                                        <div className="mt-2 flex flex-col gap-2">
-                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
-                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
-                                                    {colorRows.map(row => (
-                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                            <div className="flex gap-2 items-center">
-                                                                <input type="color" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-6 h-6 p-0 border-0 rounded-sm cursor-pointer shrink-0" />
-                                                                <input type="text" value={row.hex} onChange={e => handleColorChange(row.id, e.target.value)} className="w-20 text-[10px] font-mono font-bold p-1 border border-slate-200 rounded-sm bg-slate-50 outline-none focus:border-primary uppercase text-center" />
+                                                                <input type="text" value={row.label} onChange={e => handleColorChange(row.id, row.hex, e.target.value)} placeholder="Peran (Kosong = Bebas AI)" className="w-full text-[9px] p-1 border-none bg-slate-50 outline-none text-slate-700 font-medium rounded-sm shadow-inner placeholder:text-slate-400" />
+                                                                <button onClick={() => setColorRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                             </div>
-                                                            <input type="text" value={row.label} onChange={e => handleColorChange(row.id, row.hex, e.target.value)} placeholder="Peran (Kosong = Bebas AI)" className="w-full text-[9px] p-1 border-none bg-slate-50 outline-none text-slate-700 font-medium rounded-sm shadow-inner placeholder:text-slate-400" />
-                                                            <button onClick={() => setColorRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="pt-2 border-t border-slate-200 mt-1">
-                                                    <button onClick={() => setColorRows(prev => [...prev, {id: Date.now(), hex: '#FFFFFF', label: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Warna</button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="pt-2 border-t border-slate-200 mt-1">
+                                                        <button onClick={() => setColorRows(prev => [...prev, {id: Date.now(), hex: '#FFFFFF', label: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Warna</button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
 
-                                {/* Eksternal Image */}
-                                <div className="mb-3">
-                                    <button 
-                                        onClick={() => toggleAccordion('imgExtPanel')} 
-                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                            <MonitorIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Gambar External
-                                        </span>
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'imgExtPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    
-                                    {openPanel === 'imgExtPanel' && (
-                                        <div className="mt-2 flex flex-col gap-2">
-                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
-                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
-                                                    {imgExtRows.map(row => (
-                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                            <input type="text" value={row.url} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL: https://..." />
-                                                            <input type="text" value={row.desc} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Penjelasan Letak (Misal: Foto Utama)" />
-                                                            <button onClick={() => setImgExtRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="pt-2 border-t border-slate-200 mt-1">
-                                                    <button onClick={() => setImgExtRows(prev => [...prev, {id: Date.now(), url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Gambar External</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Medsos Link */}
-                                <div className="mb-3">
-                                    <button 
-                                        onClick={() => toggleAccordion('medsosPanel')} 
-                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                            <LinkIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Tautan Medsos/External
-                                        </span>
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'medsosPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    
-                                    {openPanel === 'medsosPanel' && (
-                                        <div className="mt-2 flex flex-col gap-2">
-                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
-                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
-                                                    {medsosRows.map(row => (
-                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                            <div className="flex gap-1.5">
-                                                                <select value={row.type} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, type: e.target.value} : r))} className="w-1/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary">
-                                                                    <option value="Instagram">Instagram</option><option value="TikTok">TikTok</option><option value="WhatsApp">WhatsApp</option>
-                                                                    <option value="YouTube">YouTube</option><option value="Facebook">Facebook</option><option value="Twitter/X">Twitter/X</option>
-                                                                    <option value="LinkedIn">LinkedIn</option><option value="Threads">Threads</option><option value="Lainnya">Lainnya</option>
-                                                                </select>
-                                                                <input type="text" value={row.url} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-2/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target..." />
+                                    {/* Eksternal Image */}
+                                    <div className="mb-3">
+                                        <button onClick={() => toggleAccordion('imgExtPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><MonitorIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Gambar External</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'imgExtPanel' ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openPanel === 'imgExtPanel' && (
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                    <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                        {imgExtRows.map(row => (
+                                                            <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                                <input type="text" value={row.url} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL: https://..." />
+                                                                <input type="text" value={row.desc} onChange={e => setImgExtRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Penjelasan Letak (Misal: Foto Utama)" />
+                                                                <button onClick={() => setImgExtRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
                                                             </div>
-                                                            {row.type === 'Lainnya' && (
-                                                                <input type="text" value={row.desc} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner mt-0.5" placeholder="Penjelasan Link" />
-                                                            )}
-                                                            <button onClick={() => setMedsosRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="pt-2 border-t border-slate-200 mt-1">
-                                                    <button onClick={() => setMedsosRows(prev => [...prev, {id: Date.now(), type: 'Instagram', url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Tautan</button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="pt-2 border-t border-slate-200 mt-1">
+                                                        <button onClick={() => setImgExtRows(prev => [...prev, {id: Date.now(), url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Gambar External</button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
 
-                                {/* Checkout Link */}
-                                <div className="mb-3">
-                                    <button 
-                                        onClick={() => toggleAccordion('checkoutPanel')} 
-                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                            <ShoppingCartIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Link Checkout
-                                        </span>
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'checkoutPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    
-                                    {openPanel === 'checkoutPanel' && (
-                                        <div className="mt-2 flex flex-col gap-2">
-                                            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
-                                                <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
-                                                    {checkoutRows.map(row => (
-                                                        <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
-                                                            <input type="text" value={row.url} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target Checkout..." />
-                                                            <input type="text" value={row.text} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, text: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Teks Tombol (Misal: Pesan Sekarang)" />
-                                                            <button onClick={() => setCheckoutRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="pt-2 border-t border-slate-200 mt-1">
-                                                    <button onClick={() => setCheckoutRows(prev => [...prev, {id: Date.now(), url: '', text: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Checkout</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Copyright */}
-                                <div className="mb-3">
-                                    <button 
-                                        onClick={() => toggleAccordion('copyrightPanel')} 
-                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                            <CopyrightIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Hak Cipta (Footer)
-                                        </span>
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'copyrightPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    
-                                    {openPanel === 'copyrightPanel' && (
-                                        <div className="mt-2 flex flex-col gap-2">
-                                            <div className="bg-slate-50 border border-slate-200 rounded p-3 shadow-sm">
-                                                <div className="flex flex-col gap-1.5">
-                                                    <label className="block text-[9px] font-bold text-slate-500 uppercase">Nama Entitas / Perusahaan</label>
-                                                    <input 
-                                                        type="text" 
-                                                        value={copyrightName} 
-                                                        onChange={e => setCopyrightName(e.target.value)} 
-                                                        placeholder="Misal: TOKO KITA" 
-                                                        className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded-sm bg-white focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" 
-                                                    />
+                                    {/* Medsos Link */}
+                                    <div className="mb-3">
+                                        <button onClick={() => toggleAccordion('medsosPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Tautan Medsos/External</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'medsosPanel' ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openPanel === 'medsosPanel' && (
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                    <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                        {medsosRows.map(row => (
+                                                            <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                                <div className="flex gap-1.5">
+                                                                    <select value={row.type} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, type: e.target.value} : r))} className="w-1/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary">
+                                                                        <option value="Instagram">Instagram</option><option value="TikTok">TikTok</option><option value="WhatsApp">WhatsApp</option>
+                                                                        <option value="YouTube">YouTube</option><option value="Facebook">Facebook</option><option value="Twitter/X">Twitter/X</option>
+                                                                        <option value="LinkedIn">LinkedIn</option><option value="Threads">Threads</option><option value="Lainnya">Lainnya</option>
+                                                                    </select>
+                                                                    <input type="text" value={row.url} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-2/3 text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target..." />
+                                                                </div>
+                                                                {row.type === 'Lainnya' && (
+                                                                    <input type="text" value={row.desc} onChange={e => setMedsosRows(prev => prev.map(r => r.id === row.id ? {...r, desc: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner mt-0.5" placeholder="Penjelasan Link" />
+                                                                )}
+                                                                <button onClick={() => setMedsosRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="pt-2 border-t border-slate-200 mt-1">
+                                                        <button onClick={() => setMedsosRows(prev => [...prev, {id: Date.now(), type: 'Instagram', url: '', desc: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Tautan</button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
 
-                                {/* Other settings */}
-                                <div className="mb-3">
-                                    <button 
-                                        onClick={() => toggleAccordion('otherPanel')} 
-                                        className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none"
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                            <SettingsIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pengaturan Lainnya
-                                        </span>
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'otherPanel' ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    
-                                    {openPanel === 'otherPanel' && (
-                                        <div className="mt-2 flex flex-col gap-2">
-                                            <div className="bg-slate-50 border border-slate-200 rounded p-3 shadow-sm">
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                        <input type="checkbox" checked={chkBioLink} onChange={e => setChkBioLink(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                        <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Mode Bio Link / Mini Page</span>
-                                                    </label>
-                                                    <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                        <input type="checkbox" checked={chkDarkMode} onChange={e => setChkDarkMode(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                        <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Gelap & Terang (Auto Toggle)</span>
-                                                    </label>
-                                                    <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                                                        <input type="checkbox" checked={chkResponsive} onChange={e => setChkResponsive(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
-                                                        <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Mutlak (Layar PC & HP)</span>
-                                                    </label>
+                                    {/* Checkout Link */}
+                                    <div className="mb-3">
+                                        <button onClick={() => toggleAccordion('checkoutPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><ShoppingCartIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Link Checkout</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'checkoutPanel' ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openPanel === 'checkoutPanel' && (
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <div className="bg-slate-50 border border-slate-200 rounded p-2 flex flex-col shadow-sm">
+                                                    <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto custom-scroll p-1 pb-2">
+                                                        {checkoutRows.map(row => (
+                                                            <div key={row.id} className="relative bg-white border border-slate-200 p-2 rounded-sm flex flex-col gap-1.5 shadow-sm">
+                                                                <input type="text" value={row.url} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, url: e.target.value} : r))} className="w-full text-[10px] p-1 border border-gray-300 rounded-sm bg-slate-50 outline-none focus:border-primary pr-6" placeholder="URL Target Checkout..." />
+                                                                <input type="text" value={row.text} onChange={e => setCheckoutRows(prev => prev.map(r => r.id === row.id ? {...r, text: e.target.value} : r))} className="w-full text-[9px] p-1 border-none bg-slate-50 rounded-sm outline-none text-slate-600 placeholder:text-slate-400 shadow-inner" placeholder="Teks Tombol (Misal: Pesan Sekarang)" />
+                                                                <button onClick={() => setCheckoutRows(prev => prev.filter(r => r.id !== row.id))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md hover:bg-red-600 hover:scale-110 transition-transform"><XCircleIcon className="w-3 h-3" /></button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="pt-2 border-t border-slate-200 mt-1">
+                                                        <button onClick={() => setCheckoutRows(prev => [...prev, {id: Date.now(), url: '', text: ''}])} className="w-full py-1.5 border border-dashed border-slate-300 text-slate-500 bg-white hover:bg-slate-100 hover:text-slate-700 text-[9px] font-bold rounded-sm flex items-center justify-center gap-1 transition-colors shadow-sm uppercase"><PlusIcon /> Tambah Checkout</button>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        )}
+                                    </div>
+
+                                    {/* Copyright */}
+                                    <div className="mb-3">
+                                        <button onClick={() => toggleAccordion('copyrightPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><CopyrightIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Hak Cipta (Footer)</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'copyrightPanel' ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openPanel === 'copyrightPanel' && (
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <div className="bg-slate-50 border border-slate-200 rounded p-3 shadow-sm">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="block text-[9px] font-bold text-slate-500 uppercase">Nama Entitas / Perusahaan</label>
+                                                        <input type="text" value={copyrightName} onChange={e => setCopyrightName(e.target.value)} placeholder="Misal: TOKO KITA" className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded-sm bg-white focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Other settings */}
+                                    <div className="mb-3">
+                                        <button onClick={() => toggleAccordion('otherPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><SettingsIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pengaturan Lainnya</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'otherPanel' ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openPanel === 'otherPanel' && (
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <div className="bg-slate-50 border border-slate-200 rounded p-3 shadow-sm">
+                                                    <div className="flex flex-col gap-2">
+                                                        <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                            <input type="checkbox" checked={chkBioLink} onChange={e => setChkBioLink(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                            <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Mode Bio Link / Mini Page</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                            <input type="checkbox" checked={chkDarkMode} onChange={e => setChkDarkMode(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                            <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Gelap & Terang (Auto Toggle)</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                                                            <input type="checkbox" checked={chkResponsive} onChange={e => setChkResponsive(e.target.checked)} className="w-3.5 h-3.5 border-gray-300 rounded cursor-pointer" />
+                                                            <span className="text-[11px] font-bold text-slate-600 group-hover:text-primaryDark transition-colors">Responsif Mutlak (Layar PC & HP)</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Generate Params */}
+                                    <div className="grid grid-cols-3 gap-2 shrink-0 border-t border-slate-200/60 pt-3 mt-1">
+                                        <div className="col-span-1">
+                                            <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Quantity</label>
+                                            <input type="number" min="1" max="50" value={qty} onChange={e => setQty(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* Generate Params */}
-                                <div className="grid grid-cols-3 gap-2 shrink-0 border-t border-slate-200/60 pt-3 mt-1">
-                                    <div className="col-span-1">
-                                        <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Quantity</label>
-                                        <input type="number" min="1" max="50" value={qty} onChange={e => setQty(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
-                                    </div>
-                                    <div className="col-span-1">
-                                        <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Worker</label>
-                                        <input type="number" min="1" max="10" value={workerCount} onChange={e => setWorkerCount(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
-                                    </div>
-                                    <div className="col-span-1">
-                                        <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Delay</label>
-                                        <input type="number" min="0" max="10" value={delaySec} onChange={e => setDelaySec(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
-                                    </div>
-                                    <div className="col-span-3 mt-1">
-                                        <div className="flex items-center gap-1.5 mb-0.5">
-                                            <FileTextIcon className="w-3 h-3" />
-                                            <label className="block text-[10px] font-bold text-slate-600 leading-none">Nama Ekspor ZIP (.html)</label>
+                                        <div className="col-span-1">
+                                            <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Worker</label>
+                                            <input type="number" min="1" max="10" value={workerCount} onChange={e => setWorkerCount(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
                                         </div>
-                                        <input type="text" placeholder="Dihasilkan AI jika dibiarkan kosong" value={zipName} onChange={e => setZipName(e.target.value)} className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-primary outline-none placeholder:text-slate-400 transition-all shadow-sm" />
+                                        <div className="col-span-1">
+                                            <label className="block text-[10px] font-bold text-slate-600 mb-0.5 text-center">Delay</label>
+                                            <input type="number" min="0" max="10" value={delaySec} onChange={e => setDelaySec(e.target.value)} className="w-full text-xs py-1.5 px-2 border border-gray-300 rounded bg-white text-center font-bold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
+                                        </div>
+                                        <div className="col-span-3 mt-1">
+                                            <div className="flex items-center gap-1.5 mb-0.5">
+                                                <FileTextIcon className="w-3 h-3" />
+                                                <label className="block text-[10px] font-bold text-slate-600 leading-none">Nama Ekspor ZIP (.html)</label>
+                                            </div>
+                                            <input type="text" placeholder="Dihasilkan AI jika dibiarkan kosong" value={zipName} onChange={e => setZipName(e.target.value)} className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-primary outline-none placeholder:text-slate-400 transition-all shadow-sm" />
+                                        </div>
                                     </div>
                                 </div>
-
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Bottom Execution Panel */}
-                    <div className="shrink-0 p-3 lg:p-4 bg-slate-50 border-t border-slate-200 flex flex-col gap-3 lg:gap-4 z-10">
-                        <div className="bg-white rounded-lg border border-slate-200 shadow-sm transition-all overflow-hidden">
-                            <div className="grid grid-cols-3 gap-0 border-b border-gray-100 p-2 bg-gray-50">
-                                <div className="flex flex-col items-center justify-center border border-primary/20 rounded-lg bg-primary/5 py-1.5 shadow-sm transition-all">
-                                    <div className="flex items-center gap-1 mb-1 text-primaryDark"><ClockIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Selected</span></div>
-                                    <span className="text-xs font-black text-primaryDark tabular-nums">{displaySelected}</span>
-                                </div>
-                                <div className="mx-1.5 flex flex-col items-center justify-center border border-green-200 rounded-lg bg-green-50 py-1.5 shadow-sm transition-all">
-                                    <div className="flex items-center gap-1 mb-1 text-green-600"><CheckCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Completed</span></div>
-                                    <span className="text-xs font-black text-green-700 tabular-nums">{countSuccess}</span>
-                                </div>
-                                <div className="flex flex-col items-center justify-center border border-red-200 rounded-lg bg-red-50 py-1.5 shadow-sm transition-all">
-                                    <div className="flex items-center gap-1 mb-1 text-red-600"><XCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Failed</span></div>
-                                    <span className="text-xs font-black text-red-700 tabular-nums">{countFailed}</span>
-                                </div>
-                            </div>
-                            <div className="p-2 bg-white flex items-center justify-between gap-3">
-                                <button onClick={handleClearAll} disabled={cardsState.length === 0 || isGenerating} className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold uppercase tracking-wide rounded border transition-colors ${cardsState.length > 0 && !isGenerating ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'}`}>
-                                    <TrashIcon className="w-3 h-3" /> CLEAR ALL KARTU
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-1.5 h-10">
-                            {isGenerating ? (
-                                <div className="flex-1 text-xs font-bold rounded-lg border-none shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate bg-primary/10 text-primary border-transparent border-0">
-                                    <CustomSpinner /> <span className="uppercase tracking-wide text-primary">Memproses...</span>
-                                </div>
-                            ) : (
-                                <button onClick={() => startGeneration()} disabled={!promptInput.trim() && cardsState.filter(c => c.status === 'pending').length === 0} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-all flex items-center justify-center gap-2 uppercase tracking-wide truncate ${promptInput.trim() || cardsState.filter(c => c.status === 'pending').length > 0 ? 'bg-primary hover:bg-primaryDark border-transparent text-slate-900 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
-                                    <SparklesIcon className="w-3.5 h-3.5" /> GENERATE
-                                </button>
                             )}
-                            
-                            <button onClick={handleTogglePause} disabled={!isGenerating && !isPaused} className={`w-10 flex items-center justify-center rounded-lg border shadow-sm transition-all active:scale-95 shrink-0 ${(!isGenerating && !isPaused) ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : isPaused ? 'bg-green-600 text-white border-green-700 hover:bg-green-700 hover:-translate-y-0.5' : 'bg-amber-100 border-amber-300 text-amber-600 hover:bg-amber-200 hover:-translate-y-0.5'}`}>
-                                {isPaused ? <PlayIcon /> : <PauseIcon />}
-                            </button>
-                            
-                            <button onClick={handleDownloadZip} disabled={countSuccess === 0 || isGenerating || isZipping} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate ${(countSuccess > 0 && !isGenerating) ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
-                                {isZipping ? <CustomSpinner className="w-3 h-3 text-white" /> : <DownloadIcon className="w-3 h-3" />} EKSPOR ZIP
-                            </button>
+
+                            {/* ========================================= */}
+                            {/* KONTEN TAB 2: EDITOR IDE (AI CHAT)        */}
+                            {/* ========================================= */}
+                            {sidebarTab === 'editor' && (
+                                <div className="flex-1 flex flex-col min-h-[400px] bg-slate-50/50 border border-slate-200 rounded-lg shadow-sm overflow-hidden relative">
+                                    {/* Area Chat Messages */}
+                                    <div className="flex-1 overflow-y-auto custom-scroll p-3 flex flex-col gap-3">
+                                        {editorChat.map((chat, idx) => (
+                                            <div key={idx} className={`p-3 text-sm shadow-sm relative border-[1.5px] ${chat.role === 'user' ? 'border-primary bg-white text-slate-800 self-end mr-2 w-[90%] rounded-[12px_12px_0_12px]' : 'border-primaryDark bg-white text-slate-700 ml-2 w-[90%] rounded-[12px_12px_12px_0]'}`}>
+                                                {chat.role === 'ai' && (
+                                                    <span className="absolute -top-3 -left-3 bg-primaryDark text-white rounded-full p-1.5 shadow-md border-2 border-white"><SparklesIcon className="w-3.5 h-3.5" /></span>
+                                                )}
+                                                <span dangerouslySetInnerHTML={{ __html: chat.text }} />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Area Input Prompt Editor */}
+                                    <div className="border-t border-slate-200 bg-white p-2 shrink-0 flex flex-col relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                                        <div className="relative w-full h-full flex flex-col bg-slate-50 border border-slate-300 rounded-xl shadow-inner focus-within:border-primary transition-all">
+                                            
+                                            {/* Chips Attachments */}
+                                            {editorAttachments.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 px-2 pt-2">
+                                                    {editorAttachments.map(att => (
+                                                        <div key={att.id} className="bg-primary/20 text-primaryDark text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1.5 shadow-sm border border-primary/30">
+                                                            <span>{att.display}</span>
+                                                            <button onClick={() => setEditorAttachments(prev => prev.filter(a => a.id !== att.id))} className="text-primary hover:text-red-600 transition"><XCircleIcon className="w-3 h-3" /></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <textarea 
+                                                value={editorPrompt} 
+                                                onChange={(e) => setEditorPrompt(e.target.value)}
+                                                placeholder="Ketik instruksi di sini..." 
+                                                className="w-full flex-1 p-3 pb-10 text-sm bg-transparent outline-none resize-none custom-scroll text-slate-700 h-24"
+                                            />
+                                            
+                                            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
+                                                <div className="relative">
+                                                    <button onClick={() => setShowEditorActionMenu(!showEditorActionMenu)} className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition border border-slate-300 shadow-sm">
+                                                        <PlusIcon className="w-4 h-4" />
+                                                    </button>
+                                                    {/* Dropdown Menu Template Prompt akan diletakkan di sini nantinya */}
+                                                </div>
+                                                <button className="w-9 h-9 rounded-full bg-primary hover:bg-primaryDark text-slate-900 flex items-center justify-center transition shadow-md">
+                                                    <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* Bottom Execution Panel (Tetap tampil untuk generator) */}
+                    {sidebarTab === 'frontend' && (
+                        <div className="shrink-0 p-3 lg:p-4 bg-slate-50 border-t border-slate-200 flex flex-col gap-3 lg:gap-4 z-10">
+                            <div className="bg-white rounded-lg border border-slate-200 shadow-sm transition-all overflow-hidden">
+                                <div className="grid grid-cols-3 gap-0 border-b border-gray-100 p-2 bg-gray-50">
+                                    <div className="flex flex-col items-center justify-center border border-primary/20 rounded-lg bg-primary/5 py-1.5 shadow-sm transition-all">
+                                        <div className="flex items-center gap-1 mb-1 text-primaryDark"><ClockIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Selected</span></div>
+                                        <span className="text-xs font-black text-primaryDark tabular-nums">{displaySelected}</span>
+                                    </div>
+                                    <div className="mx-1.5 flex flex-col items-center justify-center border border-green-200 rounded-lg bg-green-50 py-1.5 shadow-sm transition-all">
+                                        <div className="flex items-center gap-1 mb-1 text-green-600"><CheckCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Completed</span></div>
+                                        <span className="text-xs font-black text-green-700 tabular-nums">{countSuccess}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center justify-center border border-red-200 rounded-lg bg-red-50 py-1.5 shadow-sm transition-all">
+                                        <div className="flex items-center gap-1 mb-1 text-red-600"><XCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Failed</span></div>
+                                        <span className="text-xs font-black text-red-700 tabular-nums">{countFailed}</span>
+                                    </div>
+                                </div>
+                                <div className="p-2 bg-white flex items-center justify-between gap-3">
+                                    <button onClick={handleClearAll} disabled={cardsState.length === 0 || isGenerating} className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold uppercase tracking-wide rounded border transition-colors ${cardsState.length > 0 && !isGenerating ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'}`}>
+                                        <TrashIcon className="w-3 h-3" /> CLEAR ALL KARTU
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-1.5 h-10">
+                                {isGenerating ? (
+                                    <div className="flex-1 text-xs font-bold rounded-lg border-none shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate bg-primary/10 text-primary border-transparent border-0">
+                                        <CustomSpinner /> <span className="uppercase tracking-wide text-primary">Memproses...</span>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => startGeneration()} disabled={!promptInput.trim() && cardsState.filter(c => c.status === 'pending').length === 0} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-all flex items-center justify-center gap-2 uppercase tracking-wide truncate ${promptInput.trim() || cardsState.filter(c => c.status === 'pending').length > 0 ? 'bg-primary hover:bg-primaryDark border-transparent text-slate-900 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
+                                        <SparklesIcon className="w-3.5 h-3.5" /> GENERATE
+                                    </button>
+                                )}
+                                
+                                <button onClick={handleTogglePause} disabled={!isGenerating && !isPaused} className={`w-10 flex items-center justify-center rounded-lg border shadow-sm transition-all active:scale-95 shrink-0 ${(!isGenerating && !isPaused) ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : isPaused ? 'bg-green-600 text-white border-green-700 hover:bg-green-700 hover:-translate-y-0.5' : 'bg-amber-100 border-amber-300 text-amber-600 hover:bg-amber-200 hover:-translate-y-0.5'}`}>
+                                    {isPaused ? <PlayIcon /> : <PauseIcon />}
+                                </button>
+                                
+                                <button onClick={handleDownloadZip} disabled={countSuccess === 0 || isGenerating || isZipping} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate ${(countSuccess > 0 && !isGenerating) ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
+                                    {isZipping ? <CustomSpinner className="w-3 h-3 text-white" /> : <DownloadIcon className="w-3 h-3" />} EKSPOR ZIP
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </aside>
 
                 {/* MAIN GRID */}
