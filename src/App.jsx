@@ -125,6 +125,7 @@ export default function App() {
     const [deviceId, setDeviceId] = useState('');
     const [showFullEmail, setShowFullEmail] = useState(false);
     const [logoutConfirm, setLogoutConfirm] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
 
     // --- TOAST STATE ---
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -594,6 +595,30 @@ export default function App() {
             setAlertData({ title: "Error ZIP", desc: "Gagal menyusun ZIP: " + err.message });
         } finally {
             setIsZipping(false);
+        }
+    };
+
+    const handlePublishToVercel = async (card) => {
+        setIsPublishing(true);
+        try {
+            const response = await fetch('/api/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html: card.code, id: card.id })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.url) {
+                window.open(data.url, '_blank');
+                showToast("Berhasil di-publish!", "success");
+            } else {
+                throw new Error(data.error || "Gagal publish");
+            }
+        } catch (err) {
+            setAlertData({ title: "Error Publish", desc: err.message });
+        } finally {
+            setIsPublishing(false);
         }
     };
 
