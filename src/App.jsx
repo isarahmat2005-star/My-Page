@@ -1224,7 +1224,7 @@ export default function App() {
                         
                         {/* Kiri: Pilihan Jumlah Item (Merapat ke kiri) */}
                         <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                            {[50, 100, 150, 200, 250].map(size => (
+                            {[50, 100, 150, 200].map(size => (
                                 <button 
                                     key={size} 
                                     onClick={() => { setItemsPerPage(size); setCurrentPage(1); }} 
