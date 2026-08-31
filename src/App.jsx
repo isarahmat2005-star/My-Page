@@ -81,16 +81,102 @@ const loadCardsFromDB = () => {
 const deleteCardFromDB = async (id) => {
     try {
         const db = await initMetaDB();
-        const tx = db.transaction(CARDS_STORE_NAME, 'readwrite');
-        tx.objectStore(CARDS_STORE_NAME).delete(id);
-    } catch (err) { console.error('Gagal hapus card:', err); }
+        
+        // Ambil data kartu dari IndexedDB terlebih dahulu untuk mengecek blobUrl di cloud
+        const txRead = db.transaction(CARDS_STORE_NAME, 'readonly');
+        const req = txRead.objectStore(CARDS_STORE_NAME).get(id);
+        
+        req.onsuccess = async () => {
+            const card = req.result;
+            if (card && card.blobUrl) {
+                try {
+                    await fetch('/api/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: card.blobUrl })
+                    });
+                } catch (e) {
+                    console.error('Gagal menghapus file dari cloud:', e);
+                }
+            }
+            
+            // Hapus dari IndexedDB
+            const txWrite = db.transaction(CARDS_STORE_NAME, 'readwrite');
+            txWrite.objectStore(CARDS_STORE_NAME).delete(id);
+        };
+    } catch (err) { 
+        console.error('Gagal hapus card:', err); 
+    }
 };
+
 const clearCardsFromDB = async () => {
     try {
         const db = await initMetaDB();
-        const tx = db.transaction(CARDS_STORE_NAME, 'readwrite');
-        tx.objectStore(CARDS_STORE_NAME).clear();
-    } catch (err) { console.error('Gagal clear cards:', err); }
+        
+        // Ambil semua kartu untuk menghapus file di cloud Vercel Blob secara massal
+        const txRead = db.transaction(CARDS_STORE_NAME, 'readonly');
+        const req = txRead.objectStore(CARDS_STORE_NAME).getAll();
+        
+        req.onsuccess = async () => {
+            const cards = req.result || [];
+            for (const card of cards) {
+                if (card.blobUrl) {
+                    try {
+                        await fetch('/api/delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url: card.blobUrl })
+                        });
+                    } catch (e) {
+                        console.error('Gagal menghapus file dari cloud:', e);
+                    }
+                }
+            }
+            
+            // Bersihkan seluruh store di IndexedDB
+            const txWrite = db.transaction(CARDS_STORE_NAME, 'readwrite');
+            txWrite.objectStore(CARDS_STORE_NAME).clear();
+        };
+    } catch (err) { 
+        console.error('Gagal clear cards:', err); 
+    }
+};
+
+const deleteBlobFromServer = async (blobUrl) => {
+    if (!blobUrl) return;
+    try {
+        await fetch('/api/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: blobUrl })
+        });
+    } catch (e) {
+        console.error("Gagal menghapus file dari cloud:", e);
+    }
+};
+
+const handleClearAll = () => {
+    setConfirmData({
+        title: "Hapus Semua?",
+        desc: "Anda akan menghapus <b>seluruh antrean</b> dan file di cloud secara permanen.",
+        action: async () => {
+            if(abortControllerRef.current) abortControllerRef.current.abort();
+            
+            // Hapus semua file di cloud Vercel Blob yang pernah di-publish
+            for (const card of cardsState) {
+                if (card.blobUrl) {
+                    await deleteBlobFromServer(card.blobUrl);
+                }
+            }
+
+            setCardsState([]); 
+            setIsGenerating(false); 
+            setIsPaused(false); 
+            setCurrentPage(1);
+            isGeneratingRef.current = false; 
+            isPausedRef.current = false;
+        }
+    });
 };
 
 // --- LABEL PERANGKAT (dikirim ke GAS supaya user bisa lihat device mana saja yang login) ---
@@ -577,8 +663,9 @@ export default function App() {
         setConfirmData({
             title: "Hapus Semua?",
             desc: "Anda akan menghapus <b>seluruh antrean</b> secara permanen.<br><i>(Input deskripsi akan tetap aman)</i>",
-            action: () => {
+            action: async () => {
                 if(abortControllerRef.current) abortControllerRef.current.abort();
+                await clearCardsFromDB();
                 setCardsState([]); setIsGenerating(false); setIsPaused(false); setCurrentPage(1);
                 isGeneratingRef.current = false; isPausedRef.current = false;
             }
@@ -604,19 +691,25 @@ export default function App() {
             const response = await fetch('/api/publish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html: card.code, id: card.id })
+                body: JSON.stringify({ 
+                    html: card.code, 
+                    id: card.id, 
+                   title: card.title 
+               })
             });
-            
+        
             const data = await response.json();
-            
+        
             if (response.ok && data.url) {
+               // Simpan blobUrl ke dalam state kartu yang bersangkutan
+                setCardsState(prev => prev.map(c => c.id === card.id ? { ...c, blobUrl: data.blobUrl } : c));
                 window.open(data.url, '_blank');
-                showToast("Berhasil di-publish!", "success");
+                showToast("Berhasil di-publish!", "success");[cite: 1]
             } else {
                 throw new Error(data.error || "Gagal publish");
             }
         } catch (err) {
-            setAlertData({ title: "Error Publish", desc: err.message });
+            setAlertData({ title: "Error Publish", desc: err.message });[cite: 1]
         } finally {
             setIsPublishing(false);
         }
