@@ -8,7 +8,8 @@ import {
     ExternalLinkIcon, SmartphoneIcon, MonitorIcon, PlusIcon,
     PaletteIcon, LinkIcon, ShoppingCartIcon, CopyrightIcon,
     CodeIcon, TypeIcon, EditIcon, FileTextIcon, ClockIcon,
-    UserIcon, LogOutIcon, BotIcon, GithubIcon
+    UserIcon, LogOutIcon, BotIcon, GithubIcon, DesktopIcon, SmartphoneIcon, MenuIcon, UploadIcon, 
+    UndoIcon, RedoIcon, LayoutBoxIcon, CursorSelectIcon, PublishIcon
 } from './icons.jsx';
 import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './utils.js';
 
@@ -177,91 +178,57 @@ const getDeviceLabel = () => {
 
 export default function App() {
     const [currentTime, setCurrentTime] = useState(new Date());
-
-    // --- AUTH STATE ---
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [authEmail, setAuthEmail] = useState('');
     const [loginEmail, setLoginEmail] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
-    const [loginState, setLoginState] = useState('idle'); // idle | loading | success | failed
+    const [loginState, setLoginState] = useState('idle'); 
     const [deviceId, setDeviceId] = useState('');
     const [showFullEmail, setShowFullEmail] = useState(false);
     const [logoutConfirm, setLogoutConfirm] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
-
-    // --- TOAST STATE ---
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
     };
-
     const getMaskedEmail = (email) => {
         if (!email) return '';
         const [name, domain] = email.split('@');
         if (!domain) return email;
         return '*'.repeat(name.length) + '@' + domain;
     };
-
-    // UI Panels State
-    const [openPanel, setOpenPanel] = useState(null); // 'fontPanel', 'colorPanel', etc.
+    const [openPanel, setOpenPanel] = useState(null); 
     const [openFontDropdown, setOpenFontDropdown] = useState(null);
-    
-    // Form Inputs State
     const [promptInput, setPromptInput] = useState('');
     const [extraInstructions, setExtraInstructions] = useState('');
-    
-    // Fonts State
     const [currentFonts, setCurrentFonts] = useState({ all: 'Inter', judul: 'None', subjudul: 'None', isi: 'None', tombol: 'None' });
-    
-    // Colors State
     const [colorRows, setColorRows] = useState([
         { id: 1, hex: '#C8D100', label: 'Warna Utama (Primary/Tombol)' },
         { id: 2, hex: '#898F00', label: 'Warna Sekunder (Hover/Aksen)' }
     ]);
-    
-    // Internal Images State
     const [imgIntQty, setImgIntQty] = useState(0);
     const [imgIntRatio, setImgIntRatio] = useState('auto');
-    
-    // External Images State
     const [imgExtRows, setImgExtRows] = useState([]);
-    
-    // Social Media State
     const [medsosRows, setMedsosRows] = useState([]);
-    
-    // Checkout Links State
     const [checkoutRows, setCheckoutRows] = useState([]);
-    
-    // Footer Copyright State
     const [hasCopyright, setHasCopyright] = useState(false);
     const [copyrightName, setCopyrightName] = useState('');
-    
-    // Other Settings State
     const [chkBioLink, setChkBioLink] = useState(false);
     const [chkDarkMode, setChkDarkMode] = useState(false);
     const [chkResponsive, setChkResponsive] = useState(true);
-    
-    // Generation Settings State
     const [qty, setQty] = useState(5);
     const [workerCount, setWorkerCount] = useState(5);
     const [delaySec, setDelaySec] = useState(3);
     const [zipName, setZipName] = useState('');
-
-    // Queue and Cards State
     const [cardsState, setCardsState] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [isZipping, setIsZipping] = useState(false);
-    
-    // Pagination
     const [itemsPerPage, setItemsPerPage] = useState(50);
     const [currentPage, setCurrentPage] = useState(1);
-    
-    // Modals and Global UI
     const [previewCard, setPreviewCard] = useState(null);
     const [previewDevice, setPreviewDevice] = useState('desktop');
-    
     const [editCardId, setEditCardId] = useState(null);
     const [editCodeArea, setEditCodeArea] = useState('');
     const [editChatInput, setEditChatInput] = useState('');
@@ -269,21 +236,14 @@ export default function App() {
     const [editHistoryIndex, setEditHistoryIndex] = useState(-1);
     const [editTab, setEditTab] = useState('code');
     const [isEditingRevising, setIsEditingRevising] = useState(false);
-
     const [alertData, setAlertData] = useState(null);
     const [confirmData, setConfirmData] = useState(null);
-
-    // Refs
     const cardsStateRef = useRef([]);
     const isPausedRef = useRef(false);
     const isGeneratingRef = useRef(false);
     const abortControllerRef = useRef(null);
     const cardsSyncTimeout = useRef(null);
-
-    // === TAB NAVIGATION STATE ===
-    const [sidebarTab, setSidebarTab] = useState('frontend'); // 'frontend' | 'editor'
-
-    // === EDITOR STATES (Adaptasi dari my_page_editor.html) ===
+    const [sidebarTab, setSidebarTab] = useState('frontend');
     const [fileSystem, setFileSystem] = useState({ 'index.html': { content: '' } });
     const [activeFile, setActiveFile] = useState('index.html');
     const [editorChat, setEditorChat] = useState([
@@ -294,6 +254,30 @@ export default function App() {
     const [showEditorActionMenu, setShowEditorActionMenu] = useState(false);
     const [workspaceTab, setWorkspaceTab] = useState('preview'); // 'preview' | 'code'
     const [previewSize, setPreviewSize] = useState('100%'); // '100%' (PC) | '375px' (HP)
+    const [workspaceTab, setWorkspaceTab] = useState('preview'); // 'preview' | 'code'
+    const [previewSize, setPreviewSize] = useState('100%'); // '100%' (PC) | '375px' (HP)
+    const [fileSystem, setFileSystem] = useState({ 'index.html': { content: '' } });
+    const [activeFile, setActiveFile] = useState('index.html');
+    const [showFileMenu, setShowFileMenu] = useState(false);
+    const [codeHistory, setCodeHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+    const [showHistoryMenu, setShowHistoryMenu] = useState(false);
+    const [selectedElementId, setSelectedElementId] = useState(null);
+    const [selectedElementTag, setSelectedElementTag] = useState('');
+    const [inspectorAccordion, setInspectorAccordion] = useState(null); // null | 'font' | 'color' | 'layout'
+    const [elementProps, setElementProps] = useState({
+        text: '', 
+        color: '#000000', 
+        bgColor: '#ffffff',
+        fontFamily: 'Inter', 
+        fontSize: '', 
+        fontWeight: '',
+        padding: '', 
+        margin: '', 
+        borderRadius: ''
+    });
+    const iframeRef = useRef(null);
+    const fileUploadRef = useRef(null);
 
     useEffect(() => { cardsStateRef.current = cardsState; }, [cardsState]);
     
@@ -1326,113 +1310,288 @@ export default function App() {
                     </div>
                 </aside>
 
-                {/* MAIN GRID */}
-                <section className="flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100">
-                    <div className="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 shadow-sm z-10">
-                        
-                        {/* Kiri: Pilihan Jumlah Item (Tanpa Kotak Latar) */}
-                        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
-                            {[50, 100, 150, 200, 250].map(size => (
-                                <button 
-                                    key={size} 
-                                    onClick={() => { setItemsPerPage(size); setCurrentPage(1); }} 
-                                    className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/30 shadow-sm' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}
-                                >
-                                    {size}
-                                </button>
-                            ))}
-                        </div>
-                        
-                        {/* Kanan: Navigasi Halaman (Tanpa Kotak Latar) */}
-                        <div className="flex items-center gap-2">
-                            <button 
-                                onClick={() => setCurrentPage(p => p - 1)} 
-                                disabled={currentPage === 1} 
-                                className="p-1.5 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-50 border border-slate-200 transition shadow-sm"
-                            >
-                                <ChevronDownIcon className="rotate-90" />
-                            </button>
-                            
-                            <span className="text-sm font-bold text-slate-700 tracking-widest px-1">
-                                {currentPage} / {totalPages || 1}
-                            </span>
-                            
-                            <button 
-                                onClick={() => setCurrentPage(p => p + 1)} 
-                                disabled={currentPage === totalPages || totalPages === 0} 
-                                className="p-1.5 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-50 border border-slate-200 transition shadow-sm"
-                            >
-                                <ChevronDownIcon className="-rotate-90" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 p-4 lg:overflow-y-auto custom-scroll pb-20 lg:pb-4">
-                        <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-                            {cardsState.length === 0 ? (
-                                <div className="col-span-full flex flex-col items-center justify-center text-center w-full h-full min-h-[50vh]">
-                                    <div className="w-20 h-20 bg-primary/5 border border-primary/20 text-primary/60 rounded-full flex items-center justify-center mb-4"><SparklesIcon className="w-8 h-8" /></div>
-                                    <h3 className="text-xl font-bold text-slate-700 mb-2">Belum Ada Antrean</h3>
-                                    <p className="text-slate-500 text-sm max-w-md">Masukkan prompt di panel pengaturan, atur kuantitas, dan tekan GENERATE.</p>
+                {/* ============================================================== */}
+                {/* BAGIAN TENGAH: WORKSPACE (GENERATOR KARTU ATAU EDITOR IDE)     */}
+                {/* ============================================================== */}
+                <section className="flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100 shadow-inner z-10">
+                    
+                    {/* --- MODE 1: FRONT END (GENERATOR KARTU) --- */}
+                    {sidebarTab === 'frontend' && (
+                        <>
+                            <div className="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 shadow-sm z-10">
+                                {/* Kiri: Pilihan Jumlah Item */}
+                                <div className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
+                                    {[50, 100, 150, 200, 250].map(size => (
+                                        <button 
+                                            key={size} 
+                                            onClick={() => { setItemsPerPage(size); setCurrentPage(1); }} 
+                                            className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/30 shadow-sm' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}
+                                        >
+                                            {size}
+                                        </button>
+                                    ))}
                                 </div>
-                            ) : (
-                                paginatedCards.map(card => {
-                                    const isDone = card.status === 'done';
-                                    const statusColor = card.status === 'done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : card.status === 'processing' ? 'bg-primary/10 text-primary border-primary/20' : card.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200';
-                                    
-                                    return (
-                                        <div key={card.id} className={`bg-white hover:shadow-md rounded-lg shadow-sm border flex flex-col transition-all duration-300 ${card.status === 'processing' ? 'border-primary ring-2 ring-primary/20' : card.status === 'failed' ? 'border-red-300' : 'border-slate-200'}`}>
-                                            <div className="grid grid-cols-4 gap-1.5 p-2 bg-primary/5 border-b border-primary/10 rounded-t-lg shrink-0">
-                                                <button onClick={() => { setPreviewCard(card); setPreviewDevice('desktop'); }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EyeIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span></button>
-                                                <button onClick={() => { copyToClipboard(card.code); setAlertData({title:"Sukses!", desc:"Kode HTML disalin ke Clipboard."}) }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><CopyIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span></button>
-                                                <button onClick={() => handleOpenEdit(card)} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-amber-50 border-amber-200 text-amber-600 hover:brightness-95 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EditIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span></button>
-                                                <button onClick={() => setConfirmData({
-                                                    title:"Hapus Kartu?", 
-                                                    desc:"Kartu dan kode ini akan dihapus permanen.", 
-                                                    action: async () => {
-                                                        await deleteCardFromDB(card.id);
-                                                        setCardsState(prev => prev.filter(c => c.id !== card.id));
-                                                    }
-                                                })} disabled={card.status === 'processing'} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><TrashIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span></button>
-                                            </div>
-                                            <div className="p-2 border-b border-slate-100 flex justify-between items-center gap-2 shrink-0 bg-white">
-                                                <p className="text-[11px] font-bold text-slate-800 truncate">{card.title}</p>
-                                                <span className={`text-[8px] font-black tracking-widest px-1.5 py-0.5 rounded border whitespace-nowrap ${statusColor}`}>{card.status.toUpperCase()}</span>
-                                            </div>
-                                            <div className="p-2 flex gap-2 h-[150px] bg-white rounded-b-lg relative">
-                                                <div className="flex-1 rounded-lg overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-200 cursor-pointer group" onClick={() => isDone && setPreviewCard(card)}>
-                                                    {card.status === 'done' ? (
-                                                        <>
-                                                            <div className="absolute inset-0 w-full h-full bg-transparent"><iframe srcDoc={card.code} className="absolute inset-0 w-full h-full border-none pointer-events-none scale-[0.35] origin-top-left" style={{width: '285%', height: '285%'}} scrolling="no" /></div>
-                                                            <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/40 transition-all flex items-center justify-center"><PlayIcon className="text-white w-8 h-8 drop-shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all" /></div>
-                                                        </>
-                                                    ) : card.status === 'failed' ? (
-                                                        <div className="p-2 text-center text-red-500"><AlertTriangleIcon className="mx-auto mb-1 w-6 h-6" /><div className="text-[8px] font-bold break-words px-2 leading-tight">{card.error || 'Gagal'}</div></div>
-                                                    ) : card.status === 'processing' ? (
-                                                        <div className="flex flex-col items-center text-primary"><CustomSpinner className="w-6 h-6 mb-1" /></div>
-                                                    ) : (
-                                                        <div className="text-slate-400"><CodeIcon className="w-6 h-6" /></div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 border border-slate-200 rounded-lg bg-slate-50 flex flex-col overflow-hidden">
-                                                    <div className="p-1 border-b border-slate-200 bg-slate-100 sticky top-0 shrink-0"><span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block text-center">HTML Code</span></div>
-                                                    <div className="p-1.5 overflow-y-auto custom-scroll flex-1 bg-white">
-                                                        {card.status === 'processing' || card.status === 'pending' ? (
-                                                            <p className="text-[12px] text-slate-500 font-bold tracking-wide text-center h-full flex items-center justify-center">Memproses<span className="dot-anim inline-block w-4 text-left"></span></p>
-                                                        ) : (
-                                                            <pre className="text-[7px] text-slate-700 font-mono leading-tight whitespace-pre-wrap break-words"><code>{card.code ? card.code.substring(0, 300) + '...' : ''}</code></pre>
-                                                        )}
+                                {/* Kanan: Navigasi Halaman */}
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="p-1.5 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-50 border border-slate-200 transition shadow-sm"><ChevronDownIcon className="rotate-90" /></button>
+                                    <span className="text-sm font-bold text-slate-700 tracking-widest px-1">{currentPage} / {totalPages || 1}</span>
+                                    <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages || totalPages === 0} className="p-1.5 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-50 border border-slate-200 transition shadow-sm"><ChevronDownIcon className="-rotate-90" /></button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 p-4 lg:overflow-y-auto custom-scroll pb-20 lg:pb-4">
+                                <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                                    {/* MASUKKAN KODE MAPPING KARTU GENERATOR LAMA ANDA DI SINI */}
+                                    {cardsState.length === 0 ? (
+                                        <div className="col-span-full flex flex-col items-center justify-center text-center w-full h-full min-h-[50vh]">
+                                            <div className="w-20 h-20 bg-primary/5 border border-primary/20 text-primary/60 rounded-full flex items-center justify-center mb-4"><SparklesIcon className="w-8 h-8" /></div>
+                                            <h3 className="text-xl font-bold text-slate-700 mb-2">Belum Ada Antrean</h3>
+                                            <p className="text-slate-500 text-sm max-w-md">Masukkan prompt di panel pengaturan, atur kuantitas, dan tekan GENERATE.</p>
+                                        </div>
+                                    ) : (
+                                        paginatedCards.map(card => {
+                                            const isDone = card.status === 'done';
+                                            const statusColor = card.status === 'done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : card.status === 'processing' ? 'bg-primary/10 text-primary border-primary/20' : card.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200';
+                                            return (
+                                                <div key={card.id} className={`bg-white hover:shadow-md rounded-lg shadow-sm border flex flex-col transition-all duration-300 ${card.status === 'processing' ? 'border-primary ring-2 ring-primary/20' : card.status === 'failed' ? 'border-red-300' : 'border-slate-200'}`}>
+                                                    <div className="grid grid-cols-4 gap-1.5 p-2 bg-primary/5 border-b border-primary/10 rounded-t-lg shrink-0">
+                                                        <button onClick={() => { setPreviewCard(card); setPreviewDevice('desktop'); }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EyeIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span></button>
+                                                        <button onClick={() => { copyToClipboard(card.code); setAlertData({title:"Sukses!", desc:"Kode HTML disalin ke Clipboard."}) }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><CopyIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span></button>
+                                                        <button onClick={() => handleOpenEdit(card)} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-amber-50 border-amber-200 text-amber-600 hover:brightness-95 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EditIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span></button>
+                                                        <button onClick={() => setConfirmData({title:"Hapus Kartu?", desc:"Kartu dan kode ini akan dihapus permanen.", action: async () => { await deleteCardFromDB(card.id); setCardsState(prev => prev.filter(c => c.id !== card.id)); } })} disabled={card.status === 'processing'} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><TrashIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span></button>
+                                                    </div>
+                                                    <div className="p-2 border-b border-slate-100 flex justify-between items-center gap-2 shrink-0 bg-white">
+                                                        <p className="text-[11px] font-bold text-slate-800 truncate">{card.title}</p>
+                                                        <span className={`text-[8px] font-black tracking-widest px-1.5 py-0.5 rounded border whitespace-nowrap ${statusColor}`}>{card.status.toUpperCase()}</span>
+                                                    </div>
+                                                    <div className="p-2 flex gap-2 h-[150px] bg-white rounded-b-lg relative">
+                                                        <div className="flex-1 rounded-lg overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-200 cursor-pointer group" onClick={() => isDone && setPreviewCard(card)}>
+                                                            {card.status === 'done' ? (
+                                                                <>
+                                                                    <div className="absolute inset-0 w-full h-full bg-transparent"><iframe srcDoc={card.code} className="absolute inset-0 w-full h-full border-none pointer-events-none scale-[0.35] origin-top-left" style={{width: '285%', height: '285%'}} scrolling="no" /></div>
+                                                                    <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/40 transition-all flex items-center justify-center"><PlayIcon className="text-white w-8 h-8 drop-shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all" /></div>
+                                                                </>
+                                                            ) : card.status === 'failed' ? (
+                                                                <div className="p-2 text-center text-red-500"><AlertTriangleIcon className="mx-auto mb-1 w-6 h-6" /><div className="text-[8px] font-bold break-words px-2 leading-tight">{card.error || 'Gagal'}</div></div>
+                                                            ) : card.status === 'processing' ? (
+                                                                <div className="flex flex-col items-center text-primary"><CustomSpinner className="w-6 h-6 mb-1" /></div>
+                                                            ) : (
+                                                                <div className="text-slate-400"><CodeIcon className="w-6 h-6" /></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 border border-slate-200 rounded-lg bg-slate-50 flex flex-col overflow-hidden">
+                                                            <div className="p-1 border-b border-slate-200 bg-slate-100 sticky top-0 shrink-0"><span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block text-center">HTML Code</span></div>
+                                                            <div className="p-1.5 overflow-y-auto custom-scroll flex-1 bg-white">
+                                                                {card.status === 'processing' || card.status === 'pending' ? (
+                                                                    <p className="text-[12px] text-slate-500 font-bold tracking-wide text-center h-full flex items-center justify-center">Memproses<span className="dot-anim inline-block w-4 text-left"></span></p>
+                                                                ) : (
+                                                                    <pre className="text-[7px] text-slate-700 font-mono leading-tight whitespace-pre-wrap break-words"><code>{card.code ? card.code.substring(0, 300) + '...' : ''}</code></pre>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                            )
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* --- MODE 2: EDITOR IDE (WORKSPACE) --- */}
+                    {sidebarTab === 'editor' && (
+                        <div className="flex-1 flex flex-col h-full bg-slate-200 relative">
+                            {/* Toolbar Navigasi Workspace */}
+                            <div className="bg-white p-3 border-b border-slate-200 shrink-0 z-10 shadow-sm flex items-center justify-center">
+                                <div className="flex gap-2 p-1 bg-slate-100 rounded-lg w-full h-[40px] border border-slate-200">
+                                    <button onClick={() => setWorkspaceTab('preview')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${workspaceTab === 'preview' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
+                                        <EyeIcon className="w-3.5 h-3.5" /> PREVIEW
+                                    </button>
+                                    <button onClick={() => setWorkspaceTab('code')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${workspaceTab === 'code' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
+                                        <CodeIcon className="w-3.5 h-3.5" /> KODE
+                                    </button>
+                                    <button onClick={() => { /* Logika Publish via Vercel */ }} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200">
+                                        <PublishIcon className="w-3.5 h-3.5" /> PUBLISH
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col min-h-0 relative">
+                                {/* TAB 1: PREVIEW IFRAME */}
+                                {workspaceTab === 'preview' && (
+                                    <div className="absolute inset-0 flex flex-col w-full h-full bg-slate-200">
+                                        <div className="h-10 bg-white border-b border-slate-200 flex items-center justify-center gap-2 shrink-0 shadow-sm">
+                                            <div className="flex gap-1 p-0.5 bg-slate-100 rounded-md border border-slate-200">
+                                                <button onClick={() => setPreviewSize('100%')} className={`px-4 py-1 rounded text-[10px] font-bold flex items-center gap-1.5 transition ${previewSize === '100%' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><DesktopIcon className="w-3 h-3" /> PC</button>
+                                                <button onClick={() => setPreviewSize('375px')} className={`px-4 py-1 rounded text-[10px] font-bold flex items-center gap-1.5 transition ${previewSize === '375px' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><SmartphoneIcon className="w-3 h-3" /> HP</button>
                                             </div>
                                         </div>
-                                    )
-                                })
-                            )}
+                                        <div className="flex-1 overflow-auto flex justify-center p-2 relative custom-scroll">
+                                            <iframe 
+                                                ref={iframeRef} 
+                                                srcDoc={fileSystem[activeFile]?.content || ""} 
+                                                className="bg-white shadow-xl h-full border-none rounded-md transition-all duration-300 mx-auto" 
+                                                style={{ width: previewSize }} 
+                                                sandbox="allow-scripts allow-same-origin"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* TAB 2: CODE EDITOR */}
+                                {workspaceTab === 'code' && (
+                                    <div className="absolute inset-0 flex flex-col w-full h-full bg-[#1e1e1e]">
+                                        <div className="h-10 bg-[#2d2d2d] border-b border-[#404040] flex items-center justify-between px-3 shrink-0">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative">
+                                                    <button onClick={() => setShowFileMenu(!showFileMenu)} className="p-1.5 text-slate-200 bg-[#404040] rounded border border-[#505050] hover:bg-[#505050] hover:text-white transition shadow-sm flex items-center justify-center" title="File Explorer">
+                                                        <MenuIcon className="w-4 h-4" />
+                                                    </button>
+                                                    {showFileMenu && (
+                                                        <div className="absolute top-full left-0 mt-2 w-56 bg-[#2d2d2d] border border-[#404040] rounded shadow-xl z-50 overflow-hidden">
+                                                            <div className="px-3 py-1.5 border-b border-[#404040] text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-[#252525]">Workspace Files</div>
+                                                            <div className="max-h-56 overflow-y-auto custom-scroll">
+                                                                {Object.keys(fileSystem).map(filename => (
+                                                                    <button key={filename} onClick={() => { setActiveFile(filename); setShowFileMenu(false); }} className={`w-full text-left px-3 py-2 text-[11px] font-mono flex items-center gap-2 transition ${filename === activeFile ? 'text-primary bg-[#404040]' : 'text-slate-300 hover:bg-[#3d3d3d]'}`}>
+                                                                        <CodeIcon className="w-3 h-3" /> {filename}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 group border border-[#404040] rounded bg-[#252525] px-2 py-0.5">
+                                                    <CodeIcon className="w-3.5 h-3.5 text-primary" />
+                                                    <input type="text" value={activeFile} onChange={(e) => {/* Logika Rename File Nanti */}} className="bg-transparent text-slate-200 text-xs font-mono w-32 outline-none border-b border-transparent focus:border-primary transition" title="Klik untuk mengubah nama" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => { /* Logika Hapus Konten */ }} className="p-1.5 text-slate-300 bg-[#404040] border border-[#505050] rounded hover:text-red-400 hover:bg-red-900/40 hover:border-red-800 transition shadow-sm" title="Hapus Konten File Ini">
+                                                    <TrashIcon className="w-3.5 h-3.5" />
+                                                </button>
+                                                <div className="w-px h-4 bg-[#505050] mx-0.5"></div>
+                                                <input type="file" ref={fileUploadRef} accept=".html,.txt,.css,.js,.zip" className="hidden" onChange={(e) => {/* Logika Upload Nanti */}} />
+                                                <button onClick={() => fileUploadRef.current?.click()} className="px-2.5 py-1.5 bg-[#404040] border border-[#505050] rounded text-[10px] font-bold text-slate-200 hover:text-slate-900 hover:bg-primary hover:border-primary flex items-center gap-1.5 transition shadow-sm">
+                                                    <UploadIcon className="w-3 h-3" /> UPLOAD HTML/ZIP
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 relative bg-[#1e1e1e]">
+                                            <textarea 
+                                                value={fileSystem[activeFile]?.content || ""} 
+                                                onChange={(e) => { 
+                                                    // Menyimpan ketikan ke fileSystem (Sementara)
+                                                    setFileSystem(prev => ({ ...prev, [activeFile]: { content: e.target.value } })); 
+                                                }}
+                                                spellCheck="false" 
+                                                placeholder="Ketik atau paste kode Anda di sini..." 
+                                                className="absolute inset-0 w-full h-full bg-transparent text-[#d4d4d4] font-mono text-[11px] p-4 outline-none resize-none custom-scroll leading-relaxed"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </section>
-            </main>
+
+                {/* ============================================================== */}
+                {/* BAGIAN KANAN: INSPECTOR & HISTORY (HANYA MUNCUL DI MODE EDITOR)*/}
+                {/* ============================================================== */}
+                {sidebarTab === 'editor' && (
+                    <aside className="w-full lg:w-[30%] bg-white lg:border-l border-slate-200 flex flex-col shrink-0 lg:h-full relative z-20 shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)]">
+                        
+                        <div className="h-14 border-b border-slate-200 bg-slate-50 flex items-center px-4 shrink-0 justify-between">
+                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <EditIcon className="w-3.5 h-3.5" /> Editor
+                            </h2>
+                            <div className="flex items-center gap-1.5 relative">
+                                <button disabled={historyIndex <= 0} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Undo"><UndoIcon className="w-3.5 h-3.5" /></button>
+                                <button disabled={historyIndex >= codeHistory.length - 1} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Redo"><RedoIcon className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setShowHistoryMenu(!showHistoryMenu)} className="w-7 h-7 rounded bg-white border border-slate-200 text-primary flex items-center justify-center hover:bg-slate-100 transition shadow-sm" title="History"><ClockIcon className="w-3.5 h-3.5" /></button>
+                                
+                                {showHistoryMenu && (
+                                    <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-[300px] flex flex-col overflow-hidden">
+                                        <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 flex justify-between items-center tracking-wider uppercase">
+                                            <span>Riwayat Versi</span><span className="bg-primary/20 text-primaryDark px-1.5 py-0.5 rounded">{codeHistory.length}</span>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto custom-scroll flex flex-col">
+                                            {/* Mapping History Nanti */}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Area Inspector Dinamis */}
+                        <div className="flex-1 overflow-y-auto custom-scroll p-4 relative">
+                            {/* Empty State */}
+                            <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-white z-10 transition-opacity ${selectedElementId ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                                <div className="w-16 h-16 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center mb-4">
+                                    <CursorSelectIcon className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-sm font-bold text-slate-700 mb-2 tracking-wide uppercase">Pilih Elemen di Preview</h3>
+                                <p className="text-[11px] text-slate-500 max-w-[200px] leading-relaxed">Klik teks, tombol, atau kotak di layar tengah untuk mengedit desainnya.</p>
+                            </div>
+
+                            {/* Form Inspector (Muncul jika ada elemen yang diklik) */}
+                            <div className={`flex flex-col gap-4 transition-opacity ${selectedElementId ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-bold tracking-wider font-mono bg-primary/20 text-primaryDark px-2 py-0.5 rounded shadow-sm">{selectedElementTag}</span>
+                                    <button onClick={() => setSelectedElementId(null)} className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition border border-transparent hover:border-red-200 rounded px-2 py-0.5">Tutup X</button>
+                                </div>
+
+                                <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><FileTextIcon className="w-3 h-3" /> Konten Teks</label>
+                                    <textarea value={elementProps.text} onChange={(e) => setElementProps({...elementProps, text: e.target.value})} rows="3" className="w-full text-xs p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none custom-scroll bg-slate-50 transition" />
+                                </div>
+
+                                <div className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><PaletteIcon className="w-3 h-3" /> Palet Warna</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Teks (Color)</span>
+                                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded p-1 focus-within:border-primary transition">
+                                                <input type="color" value={elementProps.color} onChange={(e) => setElementProps({...elementProps, color: e.target.value})} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
+                                                <input type="text" value={elementProps.color} onChange={(e) => setElementProps({...elementProps, color: e.target.value})} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Latar (Background)</span>
+                                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded p-1 focus-within:border-primary transition">
+                                                <input type="color" value={elementProps.bgColor} onChange={(e) => setElementProps({...elementProps, bgColor: e.target.value})} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
+                                                <input type="text" value={elementProps.bgColor} onChange={(e) => setElementProps({...elementProps, bgColor: e.target.value})} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><LayoutBoxIcon className="w-3 h-3" /> Tata Letak & Bingkai</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Padding</span><input type="text" value={elementProps.padding} onChange={(e) => setElementProps({...elementProps, padding: e.target.value})} placeholder="mis: 16px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Margin</span><input type="text" value={elementProps.margin} onChange={(e) => setElementProps({...elementProps, margin: e.target.value})} placeholder="mis: 0 auto" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Radius</span><input type="text" value={elementProps.borderRadius} onChange={(e) => setElementProps({...elementProps, borderRadius: e.target.value})} placeholder="mis: 8px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Download Panel */}
+                        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2 shrink-0">
+                            <p className="text-[10px] text-center font-bold text-slate-500 mb-1 tracking-widest uppercase">EKSPOR PROJECT</p>
+                            <div className="flex gap-2">
+                                <button className="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
+                                    <FileTextIcon className="w-3.5 h-3.5" /> HTML
+                                </button>
+                                <button className="flex-1 bg-primary text-slate-900 hover:bg-primaryDark font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
+                                    <DownloadIcon className="w-3.5 h-3.5" /> ZIP
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+                )}
 
             {/* PREVIEW MODAL */}
             {previewCard && (
