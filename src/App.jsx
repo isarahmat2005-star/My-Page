@@ -7,13 +7,139 @@ import {
     SettingsIcon, UndoIcon, RedoIcon, SendIcon, ImageIcon,
     ExternalLinkIcon, SmartphoneIcon, MonitorIcon, PlusIcon,
     PaletteIcon, LinkIcon, ShoppingCartIcon, CopyrightIcon,
-    CodeIcon, TypeIcon, EditIcon, FileTextIcon, ClockIcon
+    CodeIcon, TypeIcon, EditIcon, FileTextIcon, ClockIcon,
+    UserIcon, LogOutIcon
 } from './icons.jsx';
 import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './utils.js';
 
+// =====================================================================
+// === KONFIGURASI GOOGLE APPS SCRIPT (SATPAM LOGIN) ===
+// Ganti dengan URL Deployment Web App GAS Anda sendiri.
+// =====================================================================
+const GAS_AUTH_URL = "GANTI_DENGAN_URL_GAS_ANDA";
+
+// --- INDEXED DB: UNTUK DEVICE ID & AUTO-SAVE KARTU HASIL GENERATE ---
+const META_STORE_NAME = 'meta_store';
+const CARDS_STORE_NAME = 'cards_store';
+
+const initMetaDB = () => {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('PageAiMetaDB', 1);
+        request.onerror = (e) => reject("IndexedDB error: " + e.target.errorCode);
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(META_STORE_NAME)) {
+                db.createObjectStore(META_STORE_NAME, { keyPath: 'key' });
+            }
+            if (!db.objectStoreNames.contains(CARDS_STORE_NAME)) {
+                db.createObjectStore(CARDS_STORE_NAME, { keyPath: 'id' });
+            }
+        };
+    });
+};
+
+// --- HELPER CRUD: DEVICE ID ---
+const saveDeviceIdToDB = async (id) => {
+    try {
+        const db = await initMetaDB();
+        const tx = db.transaction(META_STORE_NAME, 'readwrite');
+        tx.objectStore(META_STORE_NAME).put({ key: 'device_id', value: id });
+    } catch (err) { console.error('Gagal simpan device id ke IndexedDB:', err); }
+};
+const loadDeviceIdFromDB = () => {
+    return new Promise(async (resolve) => {
+        try {
+            const db = await initMetaDB();
+            const tx = db.transaction(META_STORE_NAME, 'readonly');
+            const req = tx.objectStore(META_STORE_NAME).get('device_id');
+            req.onsuccess = () => resolve(req.result ? req.result.value : null);
+            req.onerror = () => resolve(null);
+        } catch (err) { resolve(null); }
+    });
+};
+
+// --- HELPER CRUD: KARTU HASIL GENERATE (kode HTML) ---
+const saveCardToDB = async (card) => {
+    try {
+        const db = await initMetaDB();
+        const tx = db.transaction(CARDS_STORE_NAME, 'readwrite');
+        tx.objectStore(CARDS_STORE_NAME).put(card);
+    } catch (err) { console.error('Gagal simpan card:', err); }
+};
+const loadCardsFromDB = () => {
+    return new Promise(async (resolve) => {
+        try {
+            const db = await initMetaDB();
+            const tx = db.transaction(CARDS_STORE_NAME, 'readonly');
+            const req = tx.objectStore(CARDS_STORE_NAME).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        } catch (err) { resolve([]); }
+    });
+};
+const deleteCardFromDB = async (id) => {
+    try {
+        const db = await initMetaDB();
+        const tx = db.transaction(CARDS_STORE_NAME, 'readwrite');
+        tx.objectStore(CARDS_STORE_NAME).delete(id);
+    } catch (err) { console.error('Gagal hapus card:', err); }
+};
+const clearCardsFromDB = async () => {
+    try {
+        const db = await initMetaDB();
+        const tx = db.transaction(CARDS_STORE_NAME, 'readwrite');
+        tx.objectStore(CARDS_STORE_NAME).clear();
+    } catch (err) { console.error('Gagal clear cards:', err); }
+};
+
+// --- LABEL PERANGKAT (dikirim ke GAS supaya user bisa lihat device mana saja yang login) ---
+const getDeviceLabel = () => {
+    const ua = navigator.userAgent;
+    let browser = 'Browser';
+    if (ua.includes('Edg/')) browser = 'Edge';
+    else if (ua.includes('OPR')) browser = 'Opera';
+    else if (ua.includes('Chrome/')) browser = 'Chrome';
+    else if (ua.includes('Firefox/')) browser = 'Firefox';
+    else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari';
+
+    let os = 'Unknown OS';
+    if (ua.includes('Windows')) os = 'Windows';
+    else if (ua.includes('Mac OS')) os = 'Mac';
+    else if (ua.includes('Android')) os = 'Android';
+    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+    else if (ua.includes('Linux')) os = 'Linux';
+
+    return `${browser} - ${os}`;
+};
+
 export default function App() {
     const [currentTime, setCurrentTime] = useState(new Date());
-    
+
+    // --- AUTH STATE ---
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [authEmail, setAuthEmail] = useState('');
+    const [loginEmail, setLoginEmail] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
+    const [loginState, setLoginState] = useState('idle'); // idle | loading | success | failed
+    const [deviceId, setDeviceId] = useState('');
+    const [showFullEmail, setShowFullEmail] = useState(false);
+    const [logoutConfirm, setLogoutConfirm] = useState(false);
+
+    // --- TOAST STATE ---
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
+
+    const getMaskedEmail = (email) => {
+        if (!email) return '';
+        const [name, domain] = email.split('@');
+        if (!domain) return email;
+        return '*'.repeat(name.length) + '@' + domain;
+    };
+
     // UI Panels State
     const [openPanel, setOpenPanel] = useState(null); // 'fontPanel', 'colorPanel', etc.
     const [openFontDropdown, setOpenFontDropdown] = useState(null);
@@ -89,6 +215,7 @@ export default function App() {
     const isPausedRef = useRef(false);
     const isGeneratingRef = useRef(false);
     const abortControllerRef = useRef(null);
+    const cardsSyncTimeout = useRef(null);
 
     useEffect(() => { cardsStateRef.current = cardsState; }, [cardsState]);
     
@@ -96,6 +223,151 @@ export default function App() {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
+
+    // --- AUTO-SIMPAN cardsState KE INDEXEDDB (debounce 800ms, hanya kalau sudah login) ---
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        clearTimeout(cardsSyncTimeout.current);
+        cardsSyncTimeout.current = setTimeout(() => {
+            cardsState.forEach(c => saveCardToDB(c));
+        }, 800);
+    }, [cardsState, isAuthenticated]);
+
+    const loadInitialData = async () => {
+        const savedCards = await loadCardsFromDB();
+        if (savedCards.length > 0) {
+            const cleaned = savedCards.map(c => c.status === 'processing' ? { ...c, status: 'pending' } : c);
+            setCardsState(cleaned);
+        }
+    };
+
+    // --- INIT AUTH & DEVICE ID (dijalankan sekali saat app dibuka) ---
+    useEffect(() => {
+        const initAuth = async () => {
+            let currentDeviceId = localStorage.getItem('pageai_device_id');
+            const dbDeviceId = await loadDeviceIdFromDB();
+
+            if (!currentDeviceId && dbDeviceId) {
+                currentDeviceId = dbDeviceId;
+                localStorage.setItem('pageai_device_id', currentDeviceId);
+            } else if (!currentDeviceId) {
+                currentDeviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem('pageai_device_id', currentDeviceId);
+            }
+            saveDeviceIdToDB(currentDeviceId);
+            setDeviceId(currentDeviceId);
+
+            if (navigator.storage && navigator.storage.persist) {
+                navigator.storage.persist().catch(() => {});
+            }
+
+            const session = localStorage.getItem('pageai_session');
+            if (session) {
+                const parsedSession = JSON.parse(session);
+                setIsAuthenticated(true);
+                setAuthEmail(parsedSession.email);
+                loadInitialData();
+            }
+        };
+        initAuth();
+    }, []);
+
+    const handleLogin = async () => {
+        if (!loginEmail.trim() || !loginPassword.trim()) {
+            showToast("Masukkan email dan password terlebih dahulu", "error");
+            return;
+        }
+
+        setLoginState('loading');
+
+        try {
+            const res = await fetch(GAS_AUTH_URL, {
+                method: 'POST',
+                mode: 'cors',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'login',
+                    email: loginEmail,
+                    password: loginPassword,
+                    deviceId: deviceId,
+                    deviceLabel: getDeviceLabel()
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setLoginState('success');
+                showToast("Selamat Datang Kembali", "success");
+                localStorage.setItem('pageai_session', JSON.stringify({ email: loginEmail }));
+                setAuthEmail(loginEmail);
+                setTimeout(() => {
+                    setIsAuthenticated(true);
+                    loadInitialData();
+                }, 800);
+            } else {
+                setLoginState('failed');
+                showToast(data.message || "Gagal Login", "error");
+                setTimeout(() => setLoginState('idle'), 1500);
+            }
+        } catch (err) {
+            setLoginState('failed');
+            showToast("Koneksi gagal. Cek internet atau URL Satpam.", "error");
+            setTimeout(() => setLoginState('idle'), 1500);
+        }
+    };
+
+    const handleLogout = () => {
+        fetch(GAS_AUTH_URL, {
+            method: 'POST',
+            mode: 'cors',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'logout', email: authEmail, deviceId })
+        }).catch(err => console.error("Gagal mengirim sinyal logout ke GAS:", err));
+
+        localStorage.removeItem('pageai_session');
+        setIsAuthenticated(false);
+        setAuthEmail('');
+        setCardsState([]);
+        window.location.reload();
+    };
+
+    const forceLogoutFromRemote = () => {
+        localStorage.removeItem('pageai_session');
+        setIsAuthenticated(false);
+        setAuthEmail('');
+        setCardsState([]);
+        showToast("Device ini telah dihapus dari akun. Anda logout otomatis.", "error");
+        setTimeout(() => window.location.reload(), 1500);
+    };
+
+    // --- CEK SESI TIAP 20 DETIK: kalau device di-hapus dari akun, auto logout ---
+    useEffect(() => {
+        if (!isAuthenticated || !authEmail || !deviceId) return;
+
+        const SESSION_CHECK_INTERVAL_MS = 20000;
+
+        const intervalId = setInterval(async () => {
+            try {
+                const res = await fetch(GAS_AUTH_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'check_session', email: authEmail, deviceId })
+                });
+                const data = await res.json();
+                if (data.success && data.active === false) {
+                    forceLogoutFromRemote();
+                }
+            } catch (err) {
+                console.error('Gagal cek status sesi:', err);
+            }
+        }, SESSION_CHECK_INTERVAL_MS);
+
+        return () => clearInterval(intervalId);
+    }, [isAuthenticated, authEmail, deviceId]);
 
     const timeString = currentTime.toLocaleTimeString('id-ID', { hour12: false });
     const dateString = currentTime.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -394,6 +666,39 @@ export default function App() {
 
     const inputClass = "w-full text-xs p-2 border border-gray-300 rounded bg-slate-50 focus:ring-2 focus:ring-primary outline-none transition-all";
 
+    // --- GATE LOGIN: kalau belum login, tampilkan layar ini saja ---
+    if (!isAuthenticated) {
+        return (
+            <div className="fixed inset-0 flex items-center justify-center bg-slate-100 overflow-hidden font-sans" style={{ backgroundImage: 'linear-gradient(rgba(137, 143, 0, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(137, 143, 0, 0.08) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+                <style>{`
+                    .dot-anim::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+                    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; } }
+                `}</style>
+
+                {/* TOAST NOTIFICATION LOGIN */}
+                <div className={`fixed top-4 right-4 z-[9999] transition-all duration-500 transform ${toast.show ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
+                    <div className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 border ${toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                        {toast.type === 'error' ? <AlertTriangleIcon className="w-5 h-5" /> : <CheckCircleIcon className="w-5 h-5" />}
+                        <span className="font-bold text-sm tracking-wide">{toast.message}</span>
+                    </div>
+                </div>
+
+                <div className={`flex flex-col items-center justify-center w-full max-w-sm px-4 z-10 transition-all duration-500 ${loginState === 'success' ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}>
+                    <div className="w-full bg-white p-6 rounded-lg border border-primary/30 shadow-md flex flex-col gap-4 relative z-10">
+                        <div className="text-center mb-2">
+                            <h1 className="text-2xl font-bold text-primaryDark tracking-widest">PAGE AI LOGIN</h1>
+                        </div>
+                        <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && document.getElementById('loginPwd').focus()} className="w-full p-3 rounded-lg bg-white border border-slate-300 text-slate-800 font-bold text-center outline-none transition-all h-12 focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50 disabled:bg-slate-100" placeholder="MASUKKAN EMAIL" disabled={loginState === 'loading' || loginState === 'success'} />
+                        <input type="password" id="loginPwd" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} className="w-full p-3 rounded-lg bg-white border border-slate-300 text-slate-800 font-bold text-center outline-none transition-all h-12 focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50 disabled:bg-slate-100" placeholder="MASUKKAN PASSWORD" disabled={loginState === 'loading' || loginState === 'success'} />
+                        <button onClick={handleLogin} disabled={loginState === 'loading' || loginState === 'success'} className="bg-primary hover:bg-primaryDark text-slate-900 p-3 text-base font-bold rounded-lg cursor-pointer shadow-sm transition disabled:opacity-50">
+                            {loginState === 'loading' ? <>MEMPROSES<span className="dot-anim inline-block w-3 text-left"></span></> : 'LOGIN'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col text-slate-900 bg-slate-100 font-sans">
             <style>{`
@@ -404,7 +709,15 @@ export default function App() {
                 .dot-anim::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
                 @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; } }
             `}</style>
-            
+
+            {/* TOAST NOTIFICATION */}
+            <div className={`fixed top-4 right-4 z-[9999] transition-all duration-500 transform ${toast.show ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
+                <div className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 border ${toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                    {toast.type === 'error' ? <AlertTriangleIcon className="w-5 h-5" /> : <CheckCircleIcon className="w-5 h-5" />}
+                    <span className="font-bold text-sm tracking-wide">{toast.message}</span>
+                </div>
+            </div>
+
             <header className="bg-[#0f172a] border-b border-slate-800 sticky top-0 z-30 shadow-md h-14 flex items-center shrink-0">
                 <div className="w-full px-4 sm:px-6 flex justify-between items-center">
                     <div className="text-[28px] leading-none font-bold text-primary tracking-widest flex items-center gap-2">PAGE AI</div>
@@ -425,6 +738,29 @@ export default function App() {
                             <div className="flex gap-2 w-full">
                                 <button className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200"><MonitorIcon /> Panduan</button>
                                 <button className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primaryDark text-slate-900 font-semibold py-3 rounded-lg transition shadow-sm text-[11px] tracking-wide hover:-translate-y-0.5 duration-200"><ExternalLinkIcon /> Bantuan</button>
+                            </div>
+
+                            {/* PANEL USER AKTIF */}
+                            <div className="flex items-center justify-between p-3 bg-white border border-primary/30 rounded-lg shadow-sm">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primaryDark flex items-center justify-center shrink-0">
+                                        <UserIcon className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Email Aktif</span>
+                                        <span className="text-xs font-bold text-slate-700 truncate pr-2">
+                                            {showFullEmail ? authEmail : getMaskedEmail(authEmail)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <button onClick={() => setShowFullEmail(!showFullEmail)} className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-200 hover:text-slate-700 rounded-md transition-colors shadow-sm shrink-0" title={showFullEmail ? "Sembunyikan Email" : "Tampilkan Email"}>
+                                        <EyeIcon className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => setLogoutConfirm(true)} className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-md transition-colors shadow-sm shrink-0" title="Logout">
+                                        <LogOutIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
@@ -903,6 +1239,21 @@ export default function App() {
                         <h3 className="text-lg font-bold text-slate-800">{alertData.title}</h3>
                         <p className="text-sm text-slate-600 mt-2 mb-6">{alertData.desc}</p>
                         <button onClick={() => setAlertData(null)} className="w-full bg-primary text-slate-900 font-bold py-2 rounded-lg hover:bg-primaryDark transition shadow-sm">Tutup</button>
+                    </div>
+                </div>
+            )}
+
+            {/* LOGOUT CONFIRM MODAL */}
+            {logoutConfirm && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+                        <div className="bg-red-100 text-red-600 p-3 rounded-full mb-3"><LogOutIcon className="w-8 h-8" /></div>
+                        <h3 className="text-lg font-bold text-slate-800">Keluar dari akun?</h3>
+                        <p className="text-sm text-slate-600 mt-2 mb-6">Anda akan logout dari device ini. Data yang sudah tersimpan tidak akan hilang.</p>
+                        <div className="flex w-full gap-3">
+                            <button onClick={() => setLogoutConfirm(false)} className="flex-1 bg-slate-200 text-slate-700 font-bold py-2 rounded hover:bg-slate-300 transition text-xs shadow-sm">Batal</button>
+                            <button onClick={() => { setLogoutConfirm(false); handleLogout(); }} className="flex-1 bg-red-600 text-white font-bold py-2 rounded hover:bg-red-700 transition shadow-sm text-xs">Ya, Logout</button>
+                        </div>
                     </div>
                 </div>
             )}
