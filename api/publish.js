@@ -16,6 +16,7 @@ export default async function handler(req, res) {
         const blob = await put(filename, html, {
             access: 'public',
             contentType: 'text/html',
+            allowOverwrite: true,
         });
 
         return res.status(200).json({ url: `/api/page?id=${id}` });
