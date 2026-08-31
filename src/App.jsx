@@ -8,7 +8,7 @@ import {
     ExternalLinkIcon, SmartphoneIcon, MonitorIcon, PlusIcon,
     PaletteIcon, LinkIcon, ShoppingCartIcon, CopyrightIcon,
     CodeIcon, TypeIcon, EditIcon, FileTextIcon, ClockIcon,
-    UserIcon, LogOutIcon
+    UserIcon, LogOutIcon, BotIcon, GithubIcon, UserIcon
 } from './icons.jsx';
 import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './utils.js';
 
