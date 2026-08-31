@@ -868,54 +868,61 @@ export default function App() {
 
             <main className="w-full flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative min-h-0 bg-slate-100">
                 
-                {/* SIDEBAR */}
+                {/* SIDEBAR KIRI */}
                 <aside className="w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative">
-                    <div className="flex-1 flex flex-col overflow-y-visible lg:overflow-y-auto overflow-x-hidden custom-scroll lg:pb-6 pb-0">
-                        <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 mb-1 h-full">
-                            
-                            {/* PANEL USER AKTIF */}
-                            <div className="flex items-center justify-between p-3 bg-white border border-primary/30 rounded-lg shadow-sm shrink-0">
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primaryDark flex items-center justify-center shrink-0">
-                                        <UserIcon className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Email Aktif</span>
-                                        <span className="text-xs font-bold text-slate-700 truncate pr-2">
-                                            {showFullEmail ? authEmail : getMaskedEmail(authEmail)}
-                                        </span>
-                                    </div>
+                    
+                    {/* ========================================= */}
+                    {/* 1. HEADER (FIXED DI ATAS)                 */}
+                    {/* ========================================= */}
+                    <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 shrink-0 border-b border-slate-200 bg-slate-50 z-20 shadow-sm">
+                        {/* PANEL USER AKTIF */}
+                        <div className="flex items-center justify-between p-3 bg-white border border-primary/30 rounded-lg shadow-sm">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 text-primaryDark flex items-center justify-center shrink-0">
+                                    <UserIcon className="w-4 h-4" />
                                 </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <button onClick={() => setShowFullEmail(!showFullEmail)} className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-200 hover:text-slate-700 rounded-md transition-colors shadow-sm shrink-0" title={showFullEmail ? "Sembunyikan Email" : "Tampilkan Email"}>
-                                        <EyeIcon className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => setLogoutConfirm(true)} className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-md transition-colors shadow-sm shrink-0" title="Logout">
-                                        <LogOutIcon className="w-4 h-4" />
-                                    </button>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Email Aktif</span>
+                                    <span className="text-xs font-bold text-slate-700 truncate pr-2">
+                                        {showFullEmail ? authEmail : getMaskedEmail(authEmail)}
+                                    </span>
                                 </div>
                             </div>
-
-                            {/* --- TOMBOL TAB NAVIGASI --- */}
-                            <div className="flex bg-slate-200/70 p-1 rounded-lg gap-1 border border-slate-200 shrink-0">
-                                <button 
-                                    onClick={() => setSidebarTab('frontend')} 
-                                    className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'frontend' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                                >
-                                    <SparklesIcon className="w-3.5 h-3.5" /> Generator
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <button onClick={() => setShowFullEmail(!showFullEmail)} className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-200 hover:text-slate-700 rounded-md transition-colors shadow-sm shrink-0" title={showFullEmail ? "Sembunyikan Email" : "Tampilkan Email"}>
+                                    <EyeIcon className="w-4 h-4" />
                                 </button>
-                                <button 
-                                    onClick={() => setSidebarTab('editor')} 
-                                    className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                                >
-                                    <CodeIcon className="w-3.5 h-3.5" /> Editor IDE
+                                <button onClick={() => setLogoutConfirm(true)} className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-md transition-colors shadow-sm shrink-0" title="Logout">
+                                    <LogOutIcon className="w-4 h-4" />
                                 </button>
                             </div>
+                        </div>
 
-                            {/* ========================================= */}
-                            {/* KONTEN TAB 1: FRONT END (GENERATOR KARTU) */}
-                            {/* ========================================= */}
-                            {sidebarTab === 'frontend' && (
+                        {/* TOMBOL TAB NAVIGASI */}
+                        <div className="flex bg-slate-200/70 p-1 rounded-lg gap-1 border border-slate-200">
+                            <button 
+                                onClick={() => setSidebarTab('frontend')} 
+                                className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'frontend' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                            >
+                                <SparklesIcon className="w-3.5 h-3.5" /> Generator
+                            </button>
+                            <button 
+                                onClick={() => setSidebarTab('editor')} 
+                                className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                            >
+                                <CodeIcon className="w-3.5 h-3.5" /> Editor IDE
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ========================================= */}
+                    {/* 2. AREA TENGAH (BISA DI-SCROLL)           */}
+                    {/* ========================================= */}
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll flex flex-col bg-slate-50">
+                        
+                        {/* KONTEN TAB: FRONT END (GENERATOR) */}
+                        {sidebarTab === 'frontend' && (
+                            <div className="p-3 lg:p-4 pb-6">
                                 <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
                                     <div className="mb-3">
                                         <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Deskripsi Produk/Halaman <span className="text-red-500">*</span></label>
@@ -930,7 +937,9 @@ export default function App() {
                                     {/* Font Options */}
                                     <div className="mb-3">
                                         <button onClick={() => toggleAccordion('fontPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><TypeIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pilihan Font</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <TypeIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pilihan Font
+                                            </span>
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'fontPanel' ? 'rotate-180' : ''}`} />
                                         </button>
                                         {openPanel === 'fontPanel' && (
@@ -966,7 +975,9 @@ export default function App() {
                                     {/* Colors */}
                                     <div className="mb-3">
                                         <button onClick={() => toggleAccordion('colorPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><PaletteIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Palet Warna</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <PaletteIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Palet Warna
+                                            </span>
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'colorPanel' ? 'rotate-180' : ''}`} />
                                         </button>
                                         {openPanel === 'colorPanel' && (
@@ -995,7 +1006,9 @@ export default function App() {
                                     {/* Eksternal Image */}
                                     <div className="mb-3">
                                         <button onClick={() => toggleAccordion('imgExtPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><MonitorIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Gambar External</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <MonitorIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Gambar External
+                                            </span>
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'imgExtPanel' ? 'rotate-180' : ''}`} />
                                         </button>
                                         {openPanel === 'imgExtPanel' && (
@@ -1021,7 +1034,9 @@ export default function App() {
                                     {/* Medsos Link */}
                                     <div className="mb-3">
                                         <button onClick={() => toggleAccordion('medsosPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Tautan Medsos/External</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <LinkIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Tautan Medsos/External
+                                            </span>
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'medsosPanel' ? 'rotate-180' : ''}`} />
                                         </button>
                                         {openPanel === 'medsosPanel' && (
@@ -1056,7 +1071,9 @@ export default function App() {
                                     {/* Checkout Link */}
                                     <div className="mb-3">
                                         <button onClick={() => toggleAccordion('checkoutPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><ShoppingCartIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Link Checkout</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <ShoppingCartIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Link Checkout
+                                            </span>
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'checkoutPanel' ? 'rotate-180' : ''}`} />
                                         </button>
                                         {openPanel === 'checkoutPanel' && (
@@ -1082,7 +1099,9 @@ export default function App() {
                                     {/* Copyright */}
                                     <div className="mb-3">
                                         <button onClick={() => toggleAccordion('copyrightPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><CopyrightIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Hak Cipta (Footer)</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <CopyrightIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Hak Cipta (Footer)
+                                            </span>
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'copyrightPanel' ? 'rotate-180' : ''}`} />
                                         </button>
                                         {openPanel === 'copyrightPanel' && (
@@ -1100,7 +1119,9 @@ export default function App() {
                                     {/* Other settings */}
                                     <div className="mb-3">
                                         <button onClick={() => toggleAccordion('otherPanel')} className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-primary/10 border border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primaryDark rounded transition-colors group outline-none">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"><SettingsIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pengaturan Lainnya</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <SettingsIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primaryDark transition-colors" /> Pengaturan Lainnya
+                                            </span>
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${openPanel === 'otherPanel' ? 'rotate-180' : ''}`} />
                                         </button>
                                         {openPanel === 'otherPanel' && (
@@ -1148,112 +1169,151 @@ export default function App() {
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {/* ========================================= */}
-                            {/* KONTEN TAB 2: EDITOR IDE (AI CHAT)        */}
-                            {/* ========================================= */}
-                            {sidebarTab === 'editor' && (
-                                <div className="flex-1 flex flex-col min-h-[400px] bg-slate-50/50 border border-slate-200 rounded-lg shadow-sm overflow-hidden relative">
-                                    {/* Area Chat Messages */}
-                                    <div className="flex-1 overflow-y-auto custom-scroll p-3 flex flex-col gap-3">
-                                        {editorChat.map((chat, idx) => (
-                                            <div key={idx} className={`p-3 text-sm shadow-sm relative border-[1.5px] ${chat.role === 'user' ? 'border-primary bg-white text-slate-800 self-end mr-2 w-[90%] rounded-[12px_12px_0_12px]' : 'border-primaryDark bg-white text-slate-700 ml-2 w-[90%] rounded-[12px_12px_12px_0]'}`}>
-                                                {chat.role === 'ai' && (
-                                                    <span className="absolute -top-3 -left-3 bg-primaryDark text-white rounded-full p-1.5 shadow-md border-2 border-white"><SparklesIcon className="w-3.5 h-3.5" /></span>
-                                                )}
-                                                <span dangerouslySetInnerHTML={{ __html: chat.text }} />
-                                            </div>
-                                        ))}
+                        {/* KONTEN TAB: EDITOR IDE (CHAT AI) */}
+                        {sidebarTab === 'editor' && (
+                            <div className="flex-1 flex flex-col min-h-0 bg-slate-50 relative p-3">
+                                {/* Header Info Chat */}
+                                <div className="p-3 border-b border-slate-200 bg-white rounded-t-lg shadow-sm shrink-0 flex justify-between items-center z-10">
+                                    <h2 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                                        <SparklesIcon className="w-3.5 h-3.5 text-primaryDark" /> AI Assistant
+                                    </h2>
+                                    <button className="flex items-center justify-center gap-1 py-1 px-2 text-[9px] font-bold uppercase tracking-wide rounded border transition-colors bg-red-50 text-red-600 border-red-200 hover:bg-red-100 shadow-sm">
+                                        <TrashIcon className="w-3 h-3" /> CLEAR
+                                    </button>
+                                </div>
+                                
+                                {/* Area Chat Messages */}
+                                <div className="flex-1 overflow-y-auto custom-scroll p-4 flex flex-col gap-4 bg-white/50 border-x border-slate-200 relative pb-6">
+                                    {editorChat.map((chat, idx) => (
+                                        <div key={idx} className={`p-3 text-sm shadow-sm relative border-[1.5px] ${chat.role === 'user' ? 'border-primary bg-white text-slate-800 self-end mr-2 w-[90%] rounded-[12px_12px_0_12px]' : 'border-primaryDark bg-white text-slate-700 ml-2 w-[90%] rounded-[12px_12px_12px_0]'}`}>
+                                            {chat.role === 'ai' && (
+                                                <span className="absolute -top-3 -left-3 bg-primaryDark text-white rounded-full p-1.5 shadow-md border-2 border-white"><SparklesIcon className="w-3.5 h-3.5" /></span>
+                                            )}
+                                            <span dangerouslySetInnerHTML={{ __html: chat.text }} />
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Tutup border bawah jika tidak ada form menempel di dalam div ini */}
+                                <div className="h-px bg-slate-200 w-full"></div>
+                            </div>
+                        )}
+
+                    </div>
+
+                    {/* ========================================= */}
+                    {/* 3. FOOTER (FIXED DI BAWAH)                */}
+                    {/* ========================================= */}
+                    <div className="shrink-0 bg-slate-50 border-t border-slate-200 z-20">
+                        
+                        {/* FOOTER: FRONT END (Tombol Eksekusi) */}
+                        {sidebarTab === 'frontend' && (
+                            <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 shadow-[0_-4px_10px_-5px_rgba(0,0,0,0.05)]">
+                                <div className="bg-white rounded-lg border border-slate-200 shadow-sm transition-all overflow-hidden">
+                                    <div className="grid grid-cols-3 gap-0 border-b border-gray-100 p-2 bg-gray-50">
+                                        <div className="flex flex-col items-center justify-center border border-primary/20 rounded-lg bg-primary/5 py-1.5 shadow-sm transition-all">
+                                            <div className="flex items-center gap-1 mb-1 text-primaryDark"><ClockIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Selected</span></div>
+                                            <span className="text-xs font-black text-primaryDark tabular-nums">{displaySelected}</span>
+                                        </div>
+                                        <div className="mx-1.5 flex flex-col items-center justify-center border border-green-200 rounded-lg bg-green-50 py-1.5 shadow-sm transition-all">
+                                            <div className="flex items-center gap-1 mb-1 text-green-600"><CheckCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Completed</span></div>
+                                            <span className="text-xs font-black text-green-700 tabular-nums">{countSuccess}</span>
+                                        </div>
+                                        <div className="flex flex-col items-center justify-center border border-red-200 rounded-lg bg-red-50 py-1.5 shadow-sm transition-all">
+                                            <div className="flex items-center gap-1 mb-1 text-red-600"><XCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Failed</span></div>
+                                            <span className="text-xs font-black text-red-700 tabular-nums">{countFailed}</span>
+                                        </div>
                                     </div>
+                                    <div className="p-2 bg-white flex items-center justify-between gap-3">
+                                        <button onClick={handleClearAll} disabled={cardsState.length === 0 || isGenerating} className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold uppercase tracking-wide rounded border transition-colors ${cardsState.length > 0 && !isGenerating ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'}`}>
+                                            <TrashIcon className="w-3 h-3" /> CLEAR ALL KARTU
+                                        </button>
+                                    </div>
+                                </div>
 
-                                    {/* Area Input Prompt Editor */}
-                                    <div className="border-t border-slate-200 bg-white p-2 shrink-0 flex flex-col relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                                        <div className="relative w-full h-full flex flex-col bg-slate-50 border border-slate-300 rounded-xl shadow-inner focus-within:border-primary transition-all">
-                                            
-                                            {/* Chips Attachments */}
-                                            {editorAttachments.length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 px-2 pt-2">
-                                                    {editorAttachments.map(att => (
-                                                        <div key={att.id} className="bg-primary/20 text-primaryDark text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1.5 shadow-sm border border-primary/30">
-                                                            <span>{att.display}</span>
-                                                            <button onClick={() => setEditorAttachments(prev => prev.filter(a => a.id !== att.id))} className="text-primary hover:text-red-600 transition"><XCircleIcon className="w-3 h-3" /></button>
-                                                        </div>
-                                                    ))}
+                                <div className="flex gap-1.5 h-10">
+                                    {isGenerating ? (
+                                        <div className="flex-1 text-xs font-bold rounded-lg border-none shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate bg-primary/10 text-primary border-transparent border-0">
+                                            <CustomSpinner /> <span className="uppercase tracking-wide text-primary">Memproses...</span>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => startGeneration()} disabled={!promptInput.trim() && cardsState.filter(c => c.status === 'pending').length === 0} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-all flex items-center justify-center gap-2 uppercase tracking-wide truncate ${promptInput.trim() || cardsState.filter(c => c.status === 'pending').length > 0 ? 'bg-primary hover:bg-primaryDark border-transparent text-slate-900 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
+                                            <SparklesIcon className="w-3.5 h-3.5" /> GENERATE
+                                        </button>
+                                    )}
+                                    
+                                    <button onClick={handleTogglePause} disabled={!isGenerating && !isPaused} className={`w-10 flex items-center justify-center rounded-lg border shadow-sm transition-all active:scale-95 shrink-0 ${(!isGenerating && !isPaused) ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : isPaused ? 'bg-green-600 text-white border-green-700 hover:bg-green-700 hover:-translate-y-0.5' : 'bg-amber-100 border-amber-300 text-amber-600 hover:bg-amber-200 hover:-translate-y-0.5'}`}>
+                                        {isPaused ? <PlayIcon /> : <PauseIcon />}
+                                    </button>
+                                    
+                                    <button onClick={handleDownloadZip} disabled={countSuccess === 0 || isGenerating || isZipping} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate ${(countSuccess > 0 && !isGenerating) ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
+                                        {isZipping ? <CustomSpinner className="w-3 h-3 text-white" /> : <DownloadIcon className="w-3 h-3" />} EKSPOR ZIP
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* FOOTER: EDITOR IDE (Form Input Chat) */}
+                        {sidebarTab === 'editor' && (
+                            <div className="p-3 bg-white shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.05)] relative flex flex-col">
+                                <div className="relative w-full flex flex-col bg-slate-50 border border-slate-300 rounded-xl shadow-inner focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-visible transition-all">
+                                    
+                                    {/* Chips Attachments */}
+                                    {editorAttachments.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 px-2 pt-2 empty:hidden">
+                                            {editorAttachments.map(att => (
+                                                <div key={att.id} className="bg-primary/20 text-primaryDark text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1.5 shadow-sm border border-primary/30">
+                                                    <span>{att.display}</span>
+                                                    <button onClick={() => setEditorAttachments(prev => prev.filter(a => a.id !== att.id))} className="text-primary hover:text-red-600 transition"><XCircleIcon className="w-3 h-3" /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    <textarea 
+                                        value={editorPrompt} 
+                                        onChange={e => setEditorPrompt(e.target.value)}
+                                        placeholder="Ketik instruksi di sini... (Enter untuk baris baru)" 
+                                        className="w-full flex-1 p-3 pb-10 text-sm bg-transparent outline-none resize-none custom-scroll text-slate-700 h-24"
+                                    />
+                                    
+                                    <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
+                                        <div className="relative">
+                                            {/* Dropdown Menu (+) Membuka ke ATAS */}
+                                            {showEditorActionMenu && (
+                                                <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-slate-200 rounded-lg shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.15)] z-50 overflow-hidden transform origin-bottom-left transition-all">
+                                                    <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Template Prompt</div>
+                                                    
+                                                    <button onClick={() => { setShowEditorActionMenu(false); /* attach logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition">
+                                                        <SparklesIcon className="w-3.5 h-3.5" /> Ubah Front End & Estetika
+                                                    </button>
+                                                    <button onClick={() => { setShowEditorActionMenu(false); /* openColor logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
+                                                        <PaletteIcon className="w-3.5 h-3.5" /> Konfigurasi Palet Warna Baru
+                                                    </button>
+                                                    <button onClick={() => { setShowEditorActionMenu(false); /* openFont logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
+                                                        <TypeIcon className="w-3.5 h-3.5" /> Tetapkan Jenis Font Utama
+                                                    </button>
+                                                    <button onClick={() => { setShowEditorActionMenu(false); /* attachGithub logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
+                                                        <CodeIcon className="w-3.5 h-3.5" /> Pecah Jadi Struktur Github
+                                                    </button>
                                                 </div>
                                             )}
 
-                                            <textarea 
-                                                value={editorPrompt} 
-                                                onChange={(e) => setEditorPrompt(e.target.value)}
-                                                placeholder="Ketik instruksi di sini..." 
-                                                className="w-full flex-1 p-3 pb-10 text-sm bg-transparent outline-none resize-none custom-scroll text-slate-700 h-24"
-                                            />
-                                            
-                                            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
-                                                <div className="relative">
-                                                    <button onClick={() => setShowEditorActionMenu(!showEditorActionMenu)} className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition border border-slate-300 shadow-sm">
-                                                        <PlusIcon className="w-4 h-4" />
-                                                    </button>
-                                                    {/* Dropdown Menu Template Prompt akan diletakkan di sini nantinya */}
-                                                </div>
-                                                <button className="w-9 h-9 rounded-full bg-primary hover:bg-primaryDark text-slate-900 flex items-center justify-center transition shadow-md">
-                                                    <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />
-                                                </button>
-                                            </div>
+                                            <button onClick={() => setShowEditorActionMenu(!showEditorActionMenu)} className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition border border-slate-300 shadow-sm" title="Template Prompt">
+                                                <PlusIcon className="w-4 h-4" />
+                                            </button>
                                         </div>
+                                        <button className="w-9 h-9 rounded-full bg-primary hover:bg-primaryDark text-slate-900 flex items-center justify-center transition shadow-md disabled:opacity-50 z-10">
+                                            <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />
+                                        </button>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
+                        
                     </div>
-
-                    {/* Bottom Execution Panel (Tetap tampil untuk generator) */}
-                    {sidebarTab === 'frontend' && (
-                        <div className="shrink-0 p-3 lg:p-4 bg-slate-50 border-t border-slate-200 flex flex-col gap-3 lg:gap-4 z-10">
-                            <div className="bg-white rounded-lg border border-slate-200 shadow-sm transition-all overflow-hidden">
-                                <div className="grid grid-cols-3 gap-0 border-b border-gray-100 p-2 bg-gray-50">
-                                    <div className="flex flex-col items-center justify-center border border-primary/20 rounded-lg bg-primary/5 py-1.5 shadow-sm transition-all">
-                                        <div className="flex items-center gap-1 mb-1 text-primaryDark"><ClockIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Selected</span></div>
-                                        <span className="text-xs font-black text-primaryDark tabular-nums">{displaySelected}</span>
-                                    </div>
-                                    <div className="mx-1.5 flex flex-col items-center justify-center border border-green-200 rounded-lg bg-green-50 py-1.5 shadow-sm transition-all">
-                                        <div className="flex items-center gap-1 mb-1 text-green-600"><CheckCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Completed</span></div>
-                                        <span className="text-xs font-black text-green-700 tabular-nums">{countSuccess}</span>
-                                    </div>
-                                    <div className="flex flex-col items-center justify-center border border-red-200 rounded-lg bg-red-50 py-1.5 shadow-sm transition-all">
-                                        <div className="flex items-center gap-1 mb-1 text-red-600"><XCircleIcon className="w-3 h-3" /> <span className="text-xs font-medium uppercase leading-none">Failed</span></div>
-                                        <span className="text-xs font-black text-red-700 tabular-nums">{countFailed}</span>
-                                    </div>
-                                </div>
-                                <div className="p-2 bg-white flex items-center justify-between gap-3">
-                                    <button onClick={handleClearAll} disabled={cardsState.length === 0 || isGenerating} className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold uppercase tracking-wide rounded border transition-colors ${cardsState.length > 0 && !isGenerating ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'}`}>
-                                        <TrashIcon className="w-3 h-3" /> CLEAR ALL KARTU
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-1.5 h-10">
-                                {isGenerating ? (
-                                    <div className="flex-1 text-xs font-bold rounded-lg border-none shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate bg-primary/10 text-primary border-transparent border-0">
-                                        <CustomSpinner /> <span className="uppercase tracking-wide text-primary">Memproses...</span>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => startGeneration()} disabled={!promptInput.trim() && cardsState.filter(c => c.status === 'pending').length === 0} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-all flex items-center justify-center gap-2 uppercase tracking-wide truncate ${promptInput.trim() || cardsState.filter(c => c.status === 'pending').length > 0 ? 'bg-primary hover:bg-primaryDark border-transparent text-slate-900 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
-                                        <SparklesIcon className="w-3.5 h-3.5" /> GENERATE
-                                    </button>
-                                )}
-                                
-                                <button onClick={handleTogglePause} disabled={!isGenerating && !isPaused} className={`w-10 flex items-center justify-center rounded-lg border shadow-sm transition-all active:scale-95 shrink-0 ${(!isGenerating && !isPaused) ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : isPaused ? 'bg-green-600 text-white border-green-700 hover:bg-green-700 hover:-translate-y-0.5' : 'bg-amber-100 border-amber-300 text-amber-600 hover:bg-amber-200 hover:-translate-y-0.5'}`}>
-                                    {isPaused ? <PlayIcon /> : <PauseIcon />}
-                                </button>
-                                
-                                <button onClick={handleDownloadZip} disabled={countSuccess === 0 || isGenerating || isZipping} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide truncate ${(countSuccess > 0 && !isGenerating) ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
-                                    {isZipping ? <CustomSpinner className="w-3 h-3 text-white" /> : <DownloadIcon className="w-3 h-3" />} EKSPOR ZIP
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </aside>
 
                 {/* MAIN GRID */}
