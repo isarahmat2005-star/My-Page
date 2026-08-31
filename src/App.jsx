@@ -1189,26 +1189,20 @@ export default function App() {
                                 {/* Area Chat Messages */}
                                 <div className="flex-1 overflow-y-auto custom-scroll p-4 flex flex-col gap-4 bg-white/50 border-x border-slate-200 relative pb-6">
                                     {editorChat.map((chat, idx) => (
-                                        <div key={idx} className={`p-3 text-sm shadow-sm relative border-[1.5px] flex gap-2 ${chat.role === 'user' ? 'border-primary bg-white text-slate-800 self-end w-[90%] rounded-[12px_12px_0_12px] flex-row-reverse text-right' : 'border-primaryDark bg-white text-slate-700 self-start w-[90%] rounded-[12px_12px_12px_0] flex-row text-left'}`}>
+                                        <div key={idx} className={`p-3 text-sm shadow-sm relative border-[1.5px] ${chat.role === 'user' ? 'border-primary bg-white text-slate-800 self-end mr-2 w-[90%] rounded-[12px_12px_0_12px] text-left' : 'border-primaryDark bg-white text-slate-700 ml-2 w-[90%] rounded-[12px_12px_12px_0] text-left'}`}>
                                             
-                                            {/* Ikon Avatar (Bot/User) di Dalam Gelembung */}
-                                            <div className="shrink-0 mt-0.5">
-                                                {chat.role === 'ai' ? (
-                                                    <div className="w-6 h-6 rounded-full bg-primaryDark text-white flex items-center justify-center shadow-inner">
-                                                        <BotIcon className="w-3.5 h-3.5" />
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-6 h-6 rounded-full bg-primary text-slate-900 flex items-center justify-center shadow-inner">
-                                                        <UserIcon className="w-3.5 h-3.5" />
-                                                    </div>
-                                                )}
-                                            </div>
+                                            {/* Ikon Avatar Bot (Kiri Atas) / User (Kanan Atas) */}
+                                            {chat.role === 'ai' ? (
+                                                <span className="absolute -top-3 -left-3 bg-primaryDark text-white rounded-full p-1.5 shadow-md border-2 border-white">
+                                                    <BotIcon className="w-3.5 h-3.5" />
+                                                </span>
+                                            ) : (
+                                                <span className="absolute -top-3 -right-3 bg-primary text-slate-900 rounded-full p-1.5 shadow-md border-2 border-white">
+                                                    <UserIcon className="w-3.5 h-3.5" />
+                                                </span>
+                                            )}
 
-                                            {/* Konten Teks Chat */}
-                                            <div className="flex-1 pt-0.5">
-                                                <span dangerouslySetInnerHTML={{ __html: chat.text }} />
-                                            </div>
-
+                                            <span dangerouslySetInnerHTML={{ __html: chat.text }} />
                                         </div>
                                     ))}
                                 </div>
@@ -1312,7 +1306,6 @@ export default function App() {
                                                         <TypeIcon className="w-3.5 h-3.5" /> Tetapkan Jenis Font Utama
                                                     </button>
                                                     <button onClick={() => { setShowEditorActionMenu(false); /* attachGithub logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
-                                                        {/* IKON GITHUB ASLI DI SINI */}
                                                         <GithubIcon className="w-3.5 h-3.5" /> Pecah Jadi Struktur Github
                                                     </button>
                                                 </div>
