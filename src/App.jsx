@@ -1220,16 +1220,22 @@ export default function App() {
 
                 {/* MAIN GRID */}
                 <section className="flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100">
-                    <div className="bg-white border-b border-slate-200 py-3 px-5 lg:px-8 flex justify-between items-center shrink-0 shadow-sm z-10">
+                    <div className="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 shadow-sm z-10">
                         
-                        {/* Kiri: Pilihan Jumlah Item */}
+                        {/* Kiri: Pilihan Jumlah Item (Merapat ke kiri) */}
                         <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                             {[50, 100, 150, 200, 250].map(size => (
-                                <button key={size} onClick={() => {setItemsPerPage(size); setCurrentPage(1);}} className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}>{size}</button>
+                                <button 
+                                    key={size} 
+                                    onClick={() => { setItemsPerPage(size); setCurrentPage(1); }} 
+                                    className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}
+                                >
+                                    {size}
+                                </button>
                             ))}
                         </div>
                         
-                        {/* Kanan: Navigasi Halaman (Sudah diapit tombol < dan >) */}
+                        {/* Kanan: Navigasi Halaman */}
                         <div className="flex items-center bg-white border border-slate-200 rounded p-1 shadow-sm">
                             <button 
                                 onClick={() => setCurrentPage(p => p - 1)} 
@@ -1251,7 +1257,6 @@ export default function App() {
                                 <ChevronDownIcon className="-rotate-90" />
                             </button>
                         </div>
-
                     </div>
 
                     <div className="flex-1 p-4 lg:overflow-y-auto custom-scroll pb-20 lg:pb-4">
