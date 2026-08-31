@@ -596,16 +596,31 @@ export default function App() {
                         let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. Rancang Landing Page murni dalam 1 file HTML memakai Tailwind CSS via CDN.\nDILARANG menggunakan desain template yang membosankan.\nLAPIS 2: ESTETIKA & KUALITAS UI (MUTLAK)\n- Gunakan banyak ruang kosong (padding/margin besar p-6, p-10).\n- SEMUA tombol WAJIB transisi hover. Pastikan rasio kontras teks WCAG.\nLAPIS 3: ATURAN FORMAT & KONTEN (WAJIB DIIKUTI)\n1. DILARANG keras membungkus dengan tag markdown (\`\`\`html). Output murni dari <html> sampai </html> saja.\n2. WAJIB buat tag <title> di dalam <head> yang spesifik, unik, dan relevan.\n3. KOMENTAR KODE: WAJIB sisipkan komentar HTML (<!-- penjelasan -->) yang sangat jelas di setiap blok kode utama (misal: <!-- HEADER START -->, <!-- BAGIAN HERO -->, <!-- FITUR -->, dll) agar pengguna awam mengerti fungsi kode tersebut.\n4. ANTI-COPYRIGHT: DILARANG MENGGUNAKAN NAMA BRAND ASLI/TERKENAL di dunia nyata. Gunakan nama yang UMUM dan GENERIK (misalnya: "Perusahaan Kita", "Produk Anda", "Layanan Terbaik") kecuali pengguna menyebutkan nama spesifik di prompt.`;
                         const payload = { contents: [{ parts: [{ text: task.prompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
                         
+                        // 1. AI membuat kode HTML
                         const resultHTML = await callGeminiApiViaProxy('gemini-2.5-flash:generateContent', payload);
                         
-                        let aiGeneratedTitle = task.title; // Default: "Variasi Landing Page 1"
+                        // 2. AI membaca dan meringkas <title> menjadi nama kartu
+                        let aiGeneratedTitle = task.title;
                         const titleMatch = resultHTML.match(/<title[^>]*>([^<]+)<\/title>/i);
+                        
                         if (titleMatch && titleMatch[1]) {
-                            aiGeneratedTitle = titleMatch[1].trim().substring(0, 60); 
+                            const rawTitle = titleMatch[1].trim();
+                            try {
+                                const titlePrompt = `Ringkas judul berikut menjadi nama yang bagus. Syarat MUTLAK: Minimal 3 kata, maksimal 5 kata, HANYA huruf dan angka spasi, tanpa simbol atau tanda kutip. Teks asli: "${rawTitle}"`;
+                                const titlePayload = { contents: [{ parts: [{ text: titlePrompt }] }] };
+                                
+                                const summaryResponse = await callGeminiApiViaProxy('gemini-2.5-flash:generateContent', titlePayload);
+                                if (summaryResponse && summaryResponse.trim()) {
+                                    aiGeneratedTitle = summaryResponse.trim().replace(/[^a-zA-Z0-9 ]/g, '');
+                                }
+                            } catch (e) {
+                                console.error('Gagal memanggil AI peringkas:', e);
+                                // Fallback darurat menggunakan JavaScript jika API error
+                                aiGeneratedTitle = rawTitle.split(' ').slice(0, 5).join(' ');
+                            }
                         }
 
                         if (!isPausedRef.current) {
-                            // Masukkan aiGeneratedTitle ke dalam properti 'title' kartu
                             setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, code: resultHTML, status: 'done', title: aiGeneratedTitle } : c));
                         } else {
                              setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, status: 'pending' } : c));
