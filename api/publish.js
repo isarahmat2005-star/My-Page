@@ -6,28 +6,27 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { html, id, title } = req.body;
+        const { html, title } = req.body;
         
         if (!html) {
             return res.status(400).json({ error: 'Kode HTML tidak ditemukan' });
         }
 
-        // Ubah judul kartu menjadi format URL-friendly (slug)
+        // Ubah judul kartu menjadi format URL-friendly (slug) bersih tanpa ID
         const slug = (title || 'landing-page')
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '');
 
-        const filename = `pages/${slug}-${id}.html`;
+        const filename = `pages/${slug}.html`;
         const blob = await put(filename, html, {
             access: 'public',
             contentType: 'text/html',
             allowOverwrite: true,
         });
 
-        // Kembalikan URL rapi dengan nama kartu dan URL asli blob untuk keperluan hapus
         return res.status(200).json({ 
-            url: `/p/${slug}-${id}`, 
+            url: `/p/${slug}`, 
             blobUrl: blob.url 
         });
     } catch (error) {
