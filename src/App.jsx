@@ -704,7 +704,7 @@ export default function App() {
                // Simpan blobUrl ke dalam state kartu yang bersangkutan
                 setCardsState(prev => prev.map(c => c.id === card.id ? { ...c, blobUrl: data.blobUrl } : c));
                 window.open(data.url, '_blank');
-                showToast("Berhasil di-publish!", "success");[cite: 1]
+                showToast("Berhasil di-publish!", "success");
             } else {
                 throw new Error(data.error || "Gagal publish");
             }
