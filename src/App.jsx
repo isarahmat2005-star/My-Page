@@ -1048,7 +1048,7 @@ export default function App() {
                                     <CustomSpinner /> <span className="uppercase tracking-wide text-primary">Memproses...</span>
                                 </div>
                             ) : (
-                                <button onClick={() => startGeneration()} disabled={!promptInput.trim() && cardsState.filter(c => c.status === 'pending').length === 0} className={`flex-1 text-xs font-bold rounded-lg border-none flex items-center justify-center gap-2 uppercase tracking-wide truncate transition-all ${promptInput.trim() || cardsState.filter(c => c.status === 'pending').length > 0 ? 'bg-primary hover:bg-primaryDark text-slate-900 shadow hover:-translate-y-0.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                <button onClick={() => startGeneration()} disabled={!promptInput.trim() && cardsState.filter(c => c.status === 'pending').length === 0} className={`flex-1 text-xs font-bold rounded-lg border shadow transition-all flex items-center justify-center gap-2 uppercase tracking-wide truncate ${promptInput.trim() || cardsState.filter(c => c.status === 'pending').length > 0 ? 'bg-primary hover:bg-primaryDark border-transparent text-slate-900 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
                                     <SparklesIcon className="w-3.5 h-3.5" /> GENERATE
                                 </button>
                             )}
@@ -1073,7 +1073,7 @@ export default function App() {
                             ))}
                         </div>
                         <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold text-slate-500">Hal {currentPage} / {totalPages}</span>
+                            <span className="text-sm font-bold text-slate-700 tracking-widest">{currentPage} / {totalPages || 1}</span>
                             <div className="flex gap-1">
                                 <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"><ChevronDownIcon className="rotate-90" /></button>
                                 <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages || totalPages === 0} className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"><ChevronDownIcon className="-rotate-90" /></button>
