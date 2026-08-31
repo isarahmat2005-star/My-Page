@@ -809,7 +809,7 @@ export default function App() {
                 <div className={`flex flex-col items-center justify-center w-full max-w-sm px-4 z-10 transition-all duration-500 ${loginState === 'success' ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}>
                     <div className="w-full bg-white p-6 rounded-lg border border-primary/30 shadow-md flex flex-col gap-4 relative z-10">
                         <div className="text-center mb-2">
-                            <h1 className="text-2xl font-bold text-primaryDark tracking-widest">PAGE AI LOGIN</h1>
+                            <h1 className="text-2xl font-bold text-primaryDark tracking-widest">MY PAGE LOGIN</h1>
                         </div>
                         <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && document.getElementById('loginPwd').focus()} className="w-full p-3 rounded-lg bg-white border border-slate-300 text-slate-800 font-bold text-center outline-none transition-all h-12 focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50 disabled:bg-slate-100" placeholder="MASUKKAN EMAIL" disabled={loginState === 'loading' || loginState === 'success'} />
                         <input type="password" id="loginPwd" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} className="w-full p-3 rounded-lg bg-white border border-slate-300 text-slate-800 font-bold text-center outline-none transition-all h-12 focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50 disabled:bg-slate-100" placeholder="MASUKKAN PASSWORD" disabled={loginState === 'loading' || loginState === 'success'} />
@@ -843,7 +843,7 @@ export default function App() {
 
             <header className="bg-[#0f172a] border-b border-slate-800 sticky top-0 z-30 shadow-md h-14 flex items-center shrink-0">
                 <div className="w-full px-4 sm:px-6 flex justify-between items-center">
-                    <div className="text-[28px] leading-none font-bold text-primary tracking-widest flex items-center gap-2">PAGE AI</div>
+                    <div className="text-[28px] leading-none font-bold text-primary tracking-widest flex items-center gap-2">MY PAGE</div>
                     <div className="text-right flex flex-col justify-center items-end text-slate-100">
                         <div className="text-[16px] leading-none font-bold tracking-[0.1em]">{timeString}</div>
                         <div className="text-[11px] leading-tight text-slate-400 tracking-wider mt-0.5">{dateString}</div>
