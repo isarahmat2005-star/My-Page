@@ -8,8 +8,8 @@ import {
     ExternalLinkIcon, SmartphoneIcon, MonitorIcon, PlusIcon,
     PaletteIcon, LinkIcon, ShoppingCartIcon, CopyrightIcon,
     CodeIcon, TypeIcon, EditIcon, FileTextIcon, ClockIcon,
-    UserIcon, LogOutIcon, BotIcon, GithubIcon, DesktopIcon, SmartphoneIcon, MenuIcon, UploadIcon, 
-    UndoIcon, RedoIcon, LayoutBoxIcon, CursorSelectIcon, PublishIcon
+    UserIcon, LogOutIcon, BotIcon, GithubIcon, DesktopIcon, MenuIcon, UploadIcon, 
+    LayoutBoxIcon, CursorSelectIcon, PublishIcon
 } from './icons.jsx';
 import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './utils.js';
 
@@ -244,27 +244,31 @@ export default function App() {
     const abortControllerRef = useRef(null);
     const cardsSyncTimeout = useRef(null);
     const [sidebarTab, setSidebarTab] = useState('frontend');
-    const [fileSystem, setFileSystem] = useState({ 'index.html': { content: '' } });
-    const [activeFile, setActiveFile] = useState('index.html');
+    
+    // --- State Editor Chat ---
     const [editorChat, setEditorChat] = useState([
         { role: 'ai', text: 'Halo! Saya adalah <strong>Editor My Page</strong>. Berikan instruksi di bawah, atau gunakan menu (+) untuk fitur otomatis.' }
     ]);
     const [editorPrompt, setEditorPrompt] = useState('');
     const [editorAttachments, setEditorAttachments] = useState([]);
     const [showEditorActionMenu, setShowEditorActionMenu] = useState(false);
-    const [workspaceTab, setWorkspaceTab] = useState('preview'); // 'preview' | 'code'
-    const [previewSize, setPreviewSize] = useState('100%'); // '100%' (PC) | '375px' (HP)
+    
+    // --- State Workspace (CUKUP 1 KALI SAJA) ---
     const [workspaceTab, setWorkspaceTab] = useState('preview'); // 'preview' | 'code'
     const [previewSize, setPreviewSize] = useState('100%'); // '100%' (PC) | '375px' (HP)
     const [fileSystem, setFileSystem] = useState({ 'index.html': { content: '' } });
     const [activeFile, setActiveFile] = useState('index.html');
+    
+    // --- State File & History ---
     const [showFileMenu, setShowFileMenu] = useState(false);
     const [codeHistory, setCodeHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [showHistoryMenu, setShowHistoryMenu] = useState(false);
+    
+    // --- State Inspector Kanan ---
     const [selectedElementId, setSelectedElementId] = useState(null);
     const [selectedElementTag, setSelectedElementTag] = useState('');
-    const [inspectorAccordion, setInspectorAccordion] = useState(null); // null | 'font' | 'color' | 'layout'
+    const [inspectorAccordion, setInspectorAccordion] = useState(null);
     const [elementProps, setElementProps] = useState({
         text: '', 
         color: '#000000', 
@@ -276,9 +280,10 @@ export default function App() {
         margin: '', 
         borderRadius: ''
     });
+
     const iframeRef = useRef(null);
     const fileUploadRef = useRef(null);
-
+    
     useEffect(() => { cardsStateRef.current = cardsState; }, [cardsState]);
     
     useEffect(() => {
