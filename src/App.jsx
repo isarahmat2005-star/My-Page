@@ -155,30 +155,6 @@ const deleteBlobFromServer = async (blobUrl) => {
     }
 };
 
-const handleClearAll = () => {
-    setConfirmData({
-        title: "Hapus Semua?",
-        desc: "Anda akan menghapus <b>seluruh antrean</b> dan file di cloud secara permanen.",
-        action: async () => {
-            if(abortControllerRef.current) abortControllerRef.current.abort();
-            
-            // Hapus semua file di cloud Vercel Blob yang pernah di-publish
-            for (const card of cardsState) {
-                if (card.blobUrl) {
-                    await deleteBlobFromServer(card.blobUrl);
-                }
-            }
-
-            setCardsState([]); 
-            setIsGenerating(false); 
-            setIsPaused(false); 
-            setCurrentPage(1);
-            isGeneratingRef.current = false; 
-            isPausedRef.current = false;
-        }
-    });
-};
-
 // --- LABEL PERANGKAT (dikirim ke GAS supaya user bisa lihat device mana saja yang login) ---
 const getDeviceLabel = () => {
     const ua = navigator.userAgent;
@@ -622,8 +598,15 @@ export default function App() {
                         
                         const resultHTML = await callGeminiApiViaProxy('gemini-2.5-flash:generateContent', payload);
                         
+                        let aiGeneratedTitle = task.title; // Default: "Variasi Landing Page 1"
+                        const titleMatch = resultHTML.match(/<title[^>]*>([^<]+)<\/title>/i);
+                        if (titleMatch && titleMatch[1]) {
+                            aiGeneratedTitle = titleMatch[1].trim().substring(0, 60); 
+                        }
+
                         if (!isPausedRef.current) {
-                            setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, code: resultHTML, status: 'done' } : c));
+                            // Masukkan aiGeneratedTitle ke dalam properti 'title' kartu
+                            setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, code: resultHTML, status: 'done', title: aiGeneratedTitle } : c));
                         } else {
                              setCardsState(prev => prev.map(c => c.id === task.id ? { ...c, status: 'pending' } : c));
                         }
@@ -662,12 +645,19 @@ export default function App() {
     const handleClearAll = () => {
         setConfirmData({
             title: "Hapus Semua?",
-            desc: "Anda akan menghapus <b>seluruh antrean</b> secara permanen.<br><i>(Input deskripsi akan tetap aman)</i>",
+            desc: "Anda akan menghapus <b>seluruh antrean</b> dan file di cloud secara permanen.",
             action: async () => {
                 if(abortControllerRef.current) abortControllerRef.current.abort();
+                
+                // Menghapus massal dari IndexedDB dan file cloud Vercel Blob
                 await clearCardsFromDB();
-                setCardsState([]); setIsGenerating(false); setIsPaused(false); setCurrentPage(1);
-                isGeneratingRef.current = false; isPausedRef.current = false;
+                
+                setCardsState([]); 
+                setIsGenerating(false); 
+                setIsPaused(false); 
+                setCurrentPage(1);
+                isGeneratingRef.current = false; 
+                isPausedRef.current = false;
             }
         });
     };
@@ -1249,7 +1239,14 @@ export default function App() {
                                                 <button onClick={() => { setPreviewCard(card); setPreviewDevice('desktop'); }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EyeIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span></button>
                                                 <button onClick={() => { copyToClipboard(card.code); setAlertData({title:"Sukses!", desc:"Kode HTML disalin ke Clipboard."}) }} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><CopyIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span></button>
                                                 <button onClick={() => handleOpenEdit(card)} disabled={!isDone} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-amber-50 border-amber-200 text-amber-600 hover:brightness-95 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><EditIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span></button>
-                                                <button onClick={() => setConfirmData({title:"Hapus Kartu?", desc:"Kartu dan kode ini akan dihapus permanen.", action:()=>setCardsState(prev=>prev.filter(c=>c.id!==card.id))})} disabled={card.status === 'processing'} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><TrashIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span></button>
+                                                <button onClick={() => setConfirmData({
+                                                    title:"Hapus Kartu?", 
+                                                    desc:"Kartu dan kode ini akan dihapus permanen.", 
+                                                    action: async () => {
+                                                        await deleteCardFromDB(card.id);
+                                                        setCardsState(prev => prev.filter(c => c.id !== card.id));
+                                                    }
+                                                })} disabled={card.status === 'processing'} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><TrashIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span></button>
                                             </div>
                                             <div className="p-2 border-b border-slate-100 flex justify-between items-center gap-2 shrink-0 bg-white">
                                                 <p className="text-[11px] font-bold text-slate-800 truncate">{card.title}</p>
