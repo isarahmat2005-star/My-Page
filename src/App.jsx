@@ -1222,37 +1222,37 @@ export default function App() {
                 <section className="flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100">
                     <div className="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 shadow-sm z-10">
                         
-                        {/* Kiri: Pilihan Jumlah Item (Dengan latar kotak yang sama) */}
-                        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded p-1 shadow-sm text-sm font-bold text-slate-600">
-                            {[50, 100, 150, 200].map(size => (
+                        {/* Kiri: Pilihan Jumlah Item (Tanpa Kotak Latar) */}
+                        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
+                            {[50, 100, 150, 200, 250].map(size => (
                                 <button 
                                     key={size} 
                                     onClick={() => { setItemsPerPage(size); setCurrentPage(1); }} 
-                                    className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/20 shadow-sm' : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-100 hover:border-slate-200'}`}
+                                    className={`px-2 py-1 rounded border transition ${itemsPerPage === size ? 'bg-primary/10 text-primaryDark border-primary/30 shadow-sm' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border-slate-200'}`}
                                 >
                                     {size}
                                 </button>
                             ))}
                         </div>
                         
-                        {/* Kanan: Navigasi Halaman */}
-                        <div className="flex items-center bg-white border border-slate-200 rounded p-1 shadow-sm">
+                        {/* Kanan: Navigasi Halaman (Tanpa Kotak Latar) */}
+                        <div className="flex items-center gap-2">
                             <button 
                                 onClick={() => setCurrentPage(p => p - 1)} 
                                 disabled={currentPage === 1} 
-                                className="p-1 rounded bg-slate-50 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"
+                                className="p-1.5 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-50 border border-slate-200 transition shadow-sm"
                             >
                                 <ChevronDownIcon className="rotate-90" />
                             </button>
                             
-                            <span className="text-sm font-bold text-slate-700 tracking-widest px-3">
+                            <span className="text-sm font-bold text-slate-700 tracking-widest px-1">
                                 {currentPage} / {totalPages || 1}
                             </span>
                             
                             <button 
                                 onClick={() => setCurrentPage(p => p + 1)} 
                                 disabled={currentPage === totalPages || totalPages === 0} 
-                                className="p-1 rounded bg-slate-50 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 transition"
+                                className="p-1.5 rounded bg-slate-50 hover:bg-slate-100 disabled:opacity-50 border border-slate-200 transition shadow-sm"
                             >
                                 <ChevronDownIcon className="-rotate-90" />
                             </button>
