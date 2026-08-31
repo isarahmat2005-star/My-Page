@@ -709,7 +709,7 @@ export default function App() {
                 throw new Error(data.error || "Gagal publish");
             }
         } catch (err) {
-            setAlertData({ title: "Error Publish", desc: err.message });[cite: 1]
+            setAlertData({ title: "Error Publish", desc: err.message });
         } finally {
             setIsPublishing(false);
         }
