@@ -872,57 +872,58 @@ export default function App() {
                 <aside className="w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative">
                     
                     {/* ========================================= */}
-                    {/* 1. HEADER (FIXED DI ATAS)                 */}
-                    {/* ========================================= */}
-                    <div className="p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 shrink-0 border-b border-slate-200 bg-slate-50 z-20 shadow-sm">
-                        {/* PANEL USER AKTIF */}
-                        <div className="flex items-center justify-between p-3 bg-white border border-primary/30 rounded-lg shadow-sm">
-                            <div className="flex items-center gap-2 overflow-hidden">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 text-primaryDark flex items-center justify-center shrink-0">
-                                    <UserIcon className="w-4 h-4" />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Email Aktif</span>
-                                    <span className="text-xs font-bold text-slate-700 truncate pr-2">
-                                        {showFullEmail ? authEmail : getMaskedEmail(authEmail)}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                                <button onClick={() => setShowFullEmail(!showFullEmail)} className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-200 hover:text-slate-700 rounded-md transition-colors shadow-sm shrink-0" title={showFullEmail ? "Sembunyikan Email" : "Tampilkan Email"}>
-                                    <EyeIcon className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => setLogoutConfirm(true)} className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-md transition-colors shadow-sm shrink-0" title="Logout">
-                                    <LogOutIcon className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* TOMBOL TAB NAVIGASI */}
-                        <div className="flex bg-slate-200/70 p-1 rounded-lg gap-1 border border-slate-200">
-                            <button 
-                                onClick={() => setSidebarTab('frontend')} 
-                                className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'frontend' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                            >
-                                <SparklesIcon className="w-3.5 h-3.5" /> Generator
-                            </button>
-                            <button 
-                                onClick={() => setSidebarTab('editor')} 
-                                className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                            >
-                                <CodeIcon className="w-3.5 h-3.5" /> Editor IDE
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* ========================================= */}
-                    {/* 2. AREA TENGAH (BISA DI-SCROLL)           */}
+                    {/* AREA TENGAH (BISA DI-SCROLL, TERMASUK HEADER) */}
                     {/* ========================================= */}
                     <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll flex flex-col bg-slate-50">
                         
+                        {/* --- BAGIAN ATAS (KINI IKUT SCROLL) --- */}
+                        <div className="p-3 lg:p-4 pb-2 shrink-0 flex flex-col gap-3">
+                            {/* PANEL USER AKTIF & TOMBOL TAB MENYATU (SATU KESATUAN) */}
+                            <div className="bg-white border border-primary/30 rounded-lg shadow-sm flex flex-col overflow-hidden">
+                                {/* Baris Atas: Info Email & Tombol Aksi */}
+                                <div className="flex items-center justify-between p-3 border-b border-slate-100">
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primaryDark flex items-center justify-center shrink-0">
+                                            <UserIcon className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Email Aktif</span>
+                                            <span className="text-xs font-bold text-slate-700 truncate pr-2">
+                                                {showFullEmail ? authEmail : getMaskedEmail(authEmail)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <button onClick={() => setShowFullEmail(!showFullEmail)} className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-slate-200 hover:text-slate-700 rounded-md transition-colors shadow-sm shrink-0" title={showFullEmail ? "Sembunyikan Email" : "Tampilkan Email"}>
+                                            <EyeIcon className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={() => setLogoutConfirm(true)} className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-md transition-colors shadow-sm shrink-0" title="Logout">
+                                            <LogOutIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* Baris Bawah: Tombol Tab Navigasi */}
+                                <div className="flex bg-slate-50 p-1.5 gap-1">
+                                    <button 
+                                        onClick={() => setSidebarTab('frontend')} 
+                                        className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'frontend' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
+                                    >
+                                        <SparklesIcon className="w-3.5 h-3.5" /> Generator
+                                    </button>
+                                    <button 
+                                        onClick={() => setSidebarTab('editor')} 
+                                        className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
+                                    >
+                                        <CodeIcon className="w-3.5 h-3.5" /> Editor IDE
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* KONTEN TAB: FRONT END (GENERATOR) */}
                         {sidebarTab === 'frontend' && (
-                            <div className="p-3 lg:p-4 pb-6">
+                            <div className="p-3 lg:p-4 pt-1 pb-6">
                                 <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
                                     <div className="mb-3">
                                         <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Deskripsi Produk/Halaman <span className="text-red-500">*</span></label>
@@ -1174,11 +1175,11 @@ export default function App() {
 
                         {/* KONTEN TAB: EDITOR IDE (CHAT AI) */}
                         {sidebarTab === 'editor' && (
-                            <div className="flex-1 flex flex-col min-h-0 bg-slate-50 relative p-3">
+                            <div className="flex-1 flex flex-col min-h-0 bg-slate-50 relative px-3 lg:px-4 py-2">
                                 {/* Header Info Chat */}
                                 <div className="p-3 border-b border-slate-200 bg-white rounded-t-lg shadow-sm shrink-0 flex justify-between items-center z-10">
                                     <h2 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                                        <SparklesIcon className="w-3.5 h-3.5 text-primaryDark" /> AI Assistant
+                                        <BotIcon className="w-3.5 h-3.5 text-primaryDark" /> AI Assistant
                                     </h2>
                                     <button className="flex items-center justify-center gap-1 py-1 px-2 text-[9px] font-bold uppercase tracking-wide rounded border transition-colors bg-red-50 text-red-600 border-red-200 hover:bg-red-100 shadow-sm">
                                         <TrashIcon className="w-3 h-3" /> CLEAR
@@ -1188,11 +1189,26 @@ export default function App() {
                                 {/* Area Chat Messages */}
                                 <div className="flex-1 overflow-y-auto custom-scroll p-4 flex flex-col gap-4 bg-white/50 border-x border-slate-200 relative pb-6">
                                     {editorChat.map((chat, idx) => (
-                                        <div key={idx} className={`p-3 text-sm shadow-sm relative border-[1.5px] ${chat.role === 'user' ? 'border-primary bg-white text-slate-800 self-end mr-2 w-[90%] rounded-[12px_12px_0_12px]' : 'border-primaryDark bg-white text-slate-700 ml-2 w-[90%] rounded-[12px_12px_12px_0]'}`}>
-                                            {chat.role === 'ai' && (
-                                                <span className="absolute -top-3 -left-3 bg-primaryDark text-white rounded-full p-1.5 shadow-md border-2 border-white"><SparklesIcon className="w-3.5 h-3.5" /></span>
-                                            )}
-                                            <span dangerouslySetInnerHTML={{ __html: chat.text }} />
+                                        <div key={idx} className={`p-3 text-sm shadow-sm relative border-[1.5px] flex gap-2 ${chat.role === 'user' ? 'border-primary bg-white text-slate-800 self-end w-[90%] rounded-[12px_12px_0_12px] flex-row-reverse text-right' : 'border-primaryDark bg-white text-slate-700 self-start w-[90%] rounded-[12px_12px_12px_0] flex-row text-left'}`}>
+                                            
+                                            {/* Ikon Avatar (Bot/User) di Dalam Gelembung */}
+                                            <div className="shrink-0 mt-0.5">
+                                                {chat.role === 'ai' ? (
+                                                    <div className="w-6 h-6 rounded-full bg-primaryDark text-white flex items-center justify-center shadow-inner">
+                                                        <BotIcon className="w-3.5 h-3.5" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-6 h-6 rounded-full bg-primary text-slate-900 flex items-center justify-center shadow-inner">
+                                                        <UserIcon className="w-3.5 h-3.5" />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Konten Teks Chat */}
+                                            <div className="flex-1 pt-0.5">
+                                                <span dangerouslySetInnerHTML={{ __html: chat.text }} />
+                                            </div>
+
                                         </div>
                                     ))}
                                 </div>
@@ -1257,7 +1273,7 @@ export default function App() {
 
                         {/* FOOTER: EDITOR IDE (Form Input Chat) */}
                         {sidebarTab === 'editor' && (
-                            <div className="p-3 bg-white shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.05)] relative flex flex-col">
+                            <div className="p-3 lg:p-4 bg-white shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.05)] relative flex flex-col">
                                 <div className="relative w-full flex flex-col bg-slate-50 border border-slate-300 rounded-xl shadow-inner focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-visible transition-all">
                                     
                                     {/* Chips Attachments */}
@@ -1296,7 +1312,8 @@ export default function App() {
                                                         <TypeIcon className="w-3.5 h-3.5" /> Tetapkan Jenis Font Utama
                                                     </button>
                                                     <button onClick={() => { setShowEditorActionMenu(false); /* attachGithub logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
-                                                        <CodeIcon className="w-3.5 h-3.5" /> Pecah Jadi Struktur Github
+                                                        {/* IKON GITHUB ASLI DI SINI */}
+                                                        <GithubIcon className="w-3.5 h-3.5" /> Pecah Jadi Struktur Github
                                                     </button>
                                                 </div>
                                             )}
