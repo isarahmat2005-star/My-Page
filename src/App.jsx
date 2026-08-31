@@ -1176,7 +1176,10 @@ export default function App() {
                                 <div className="flex gap-2 p-1 bg-slate-100 rounded-lg w-full h-[40px] border border-slate-200">
                                     <button onClick={() => setPreviewDevice('desktop')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewDevice === 'desktop' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><MonitorIcon className="w-3.5 h-3.5" /> PC</button>
                                     <button onClick={() => setPreviewDevice('mobile')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${previewDevice === 'mobile' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}><SmartphoneIcon className="w-3.5 h-3.5" /> HP</button>
-                                    <button onClick={() => {const blob = new Blob([previewCard.code], { type: 'text/html' }); window.open(URL.createObjectURL(blob), '_blank');}} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white"><ExternalLinkIcon className="w-3.5 h-3.5" /> PBLSH</button>
+                                    <button onClick={() => handlePublishToVercel(previewCard)} disabled={isPublishing} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {isPublishing ? <CustomSpinner className="w-3.5 h-3.5" /> : <ExternalLinkIcon className="w-3.5 h-3.5" />}
+                                        {isPublishing ? 'PROSES...' : 'PBLSH'}
+                                    </button>
                                 </div>
                             </div>
                             <div className="flex-1 w-full bg-slate-200 p-4 flex items-center justify-center overflow-hidden">
