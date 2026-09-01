@@ -293,6 +293,12 @@ export default function App() {
     const editorSyncTimeout = useRef(null);
     const editorHistorySyncTimeout = useRef(null);
     const editorPropSyncTimeout = useRef(null);
+    const isEditorCanceledRef = useRef(false); 
+    const handleEditorStop = () => {
+        isEditorCanceledRef.current = true;
+        setIsEditorSending(false);
+        setEditorChat(prev => [...prev, { role: 'ai', text: '<i>Terhenti.</i>' }]);
+    };
     
     // --- State Inspector Kanan ---
     const [selectedElementId, setSelectedElementId] = useState(null);
@@ -1270,6 +1276,8 @@ export default function App() {
         const userText = editorPrompt.trim();
         if (!userText && editorAttachments.length === 0) return;
 
+        isEditorCanceledRef.current = false; // Reset status stop
+
         let displayHtml = userText;
         if (editorAttachments.length > 0) {
             const attachmentHtml = editorAttachments.map(a => `<span class="bg-primary/20 text-primaryDark px-2 py-0.5 rounded-lg inline-block text-xs border border-primary/30 mr-1 mb-1 shadow-sm">${a.display}</span>`).join('');
@@ -1281,7 +1289,10 @@ export default function App() {
         setEditorPrompt('');
         setIsEditorSending(true);
 
-        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Web Architect. ATURAN SUPER KETAT:\n1. JIKA user HANYA menyapa, ngobrol, atau bertanya ringan (TIDAK meminta modifikasi kode), ANDA WAJIB HANYA MENJAWAB DENGAN TEKS BIASA. DILARANG memberikan blok kode HTML sama sekali.\n2. JIKA user meminta perubahan kode, WAJIB bungkus kodenya dengan \`\`\`html ... \`\`\`.\n`;
+        // INSTRUKSI AI (Ditambah aturan khusus gambar)
+        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Web Architect. ATURAN SUPER KETAT:\n1. JIKA user HANYA menyapa/ngobrol santai, JAWAB SINGKAT SEBAGAI ASISTEN (TANPA KODE).\n2. JIKA user meminta perubahan kode, WAJIB bungkus kodenya dengan \`\`\`html ... \`\`\`.\n3. JIKA Anda merancang desain yang membutuhkan gambar, SELALU sisipkan tag <img src="https://picsum.photos/800/500?random=\${Math.random()}"> agar gambar tersebut muncul dan bisa diklik pengguna untuk diedit.\n`;
+        
+        let finalPrompt = '';
         let isGithubMode = false;
         let isUbahFrontEnd = false;
 
@@ -1294,13 +1305,20 @@ export default function App() {
 
         const activeContent = fileSystem[activeFile]?.content || '';
 
+        // BYPASS: Jika hanya ngobrol singkat, jangan kirim ribuan baris kode HTML (Biar cepat)
+        let isJustChatting = false;
+        const chatWords = ['halo', 'hai', 'hi', 'pagi', 'siang', 'sore', 'malam', 'tes', 'test', 'ping', 'oi'];
+        if (chatWords.includes(userText.toLowerCase()) && editorAttachments.length === 0) {
+            isJustChatting = true;
+        }
+
         if (isUbahFrontEnd) {
             systemInstruction += `\nESTETIKA MUTLAK (REVISI/FRONT-END): Gunakan padding luas (p-6, p-10), rounded corners (rounded-2xl), dan transisi hover yang mulus. PASTIKAN hasil akhirnya terlihat sangat profesional dan memukau! LANGSUNG terapkan dan berikan HTML UTUH, DILARANG memberikan deskripsi awal.\n`;
             finalPrompt += `\nBerikut kode aslinya, rombak desain front-endnya menjadi sangat profesional:\n${activeContent}\n`;
         } else if (isGithubMode) {
-            systemInstruction += `\nMODE GITHUB (MULTI-FILE): Tolong pecah file HTML tunggal ini menjadi struktur Github murni (index.html, style.css, script.js, dan lainnya jika diperlukan). WAJIB pisahkan kodenya ke dalam blok-blok markdown dengan menyertakan nama file setelah tag bahasa. Contoh format keluaran yang diwajibkan:\n\`\`\`html:index.html\n<!-- kode -->\n\`\`\`\n\`\`\`css:style.css\n/* kode */\n\`\`\`\nLakukan sekarang tanpa penjelasan.\n`;
+            systemInstruction += `\nMODE GITHUB (MULTI-FILE): Tolong pecah file HTML tunggal ini menjadi struktur Github murni (index.html, style.css, script.js). WAJIB pisahkan kodenya ke dalam blok-blok markdown dengan menyertakan nama file setelah tag bahasa.\n`;
             finalPrompt += `\nKode yang akan dipecah:\n${activeContent}\n`;
-        } else if (activeContent.length > 50) {
+        } else if (activeContent.length > 50 && !isJustChatting) {
             finalPrompt += `\nKode yang sedang diedit (${activeFile}):\n${activeContent}\n`;
         }
 
@@ -1309,6 +1327,8 @@ export default function App() {
         try {
             const payload = { contents: [{ parts: [{ text: finalPrompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
             const resultText = await callGeminiApiViaProxy('gemini-2.5-flash:generateContent', payload);
+            
+            if (isEditorCanceledRef.current) return; // MENGHENTIKAN PROSES JIKA TOMBOL STOP DIKLIK
             if (!resultText) throw new Error('Format AI tidak valid.');
 
             if (isGithubMode) {
@@ -1352,9 +1372,12 @@ export default function App() {
                 }
             }
         } catch (err) {
+            if (isEditorCanceledRef.current) return; 
             setEditorChat(prev => [...prev, { role: 'ai', text: `<span class="text-red-500 font-bold">Error:</span> Gagal (${err.message})` }]);
         } finally {
-            setIsEditorSending(false);
+            if (!isEditorCanceledRef.current) {
+                setIsEditorSending(false);
+            }
         }
     };
 
@@ -1817,12 +1840,11 @@ export default function App() {
                                         </div>
                                     ))}
                                     {isEditorSending && (
-                                        <div className="p-3 text-sm text-slate-500 w-11/12 font-sans italic flex items-center gap-2 ml-2">
+                                        <div className="p-3 text-sm text-slate-700 w-[90%] font-sans flex items-center rounded-[12px_12px_12px_0]">
                                             <style>{`
                                                 @keyframes typeMemproses { 0% {content:'M'} 8% {content:'Me'} 16% {content:'Mem'} 25% {content:'Memp'} 33% {content:'Mempr'} 41% {content:'Mempro'} 50% {content:'Mempros'} 58% {content:'Memprose'} 66% {content:'Memproses'} 75% {content:'Memproses.'} 83% {content:'Memproses..'} 91% {content:'Memproses...'} 100% {content:'M'} }
                                                 .anim-memproses::after { content: 'M'; animation: typeMemproses 1.5s infinite; }
                                             `}</style>
-                                            <CustomSpinner className="w-4 h-4 text-primary shrink-0" />
                                             <span className="font-semibold anim-memproses"></span>
                                         </div>
                                     )}
@@ -1937,11 +1959,11 @@ export default function App() {
                                                 <PlusIcon className="w-4 h-4" />
                                             </button>
                                         </div>
-                                        <button onClick={handleEditorSendPrompt} disabled={!isEditorSending && !editorPrompt.trim() && editorAttachments.length === 0} className={`w-9 h-9 rounded-full flex items-center justify-center transition shadow-md z-10 shrink-0 ${isEditorSending ? 'bg-red-500 hover:bg-red-600 cursor-default' : 'bg-primary hover:bg-primaryDark text-slate-900 disabled:opacity-50'}`}>
+                                        <button onClick={isEditorSending ? handleEditorStop : handleEditorSendPrompt} disabled={!isEditorSending && !editorPrompt.trim() && editorAttachments.length === 0} className="w-9 h-9 rounded-full bg-primary hover:bg-primaryDark flex items-center justify-center transition shadow-md z-10 shrink-0 disabled:opacity-50">
                                             {isEditorSending ? (
-                                                <div className="w-3.5 h-3.5 bg-white rounded-[3px]"></div>
+                                                <div className="w-3.5 h-3.5 bg-slate-900 rounded-[3px]"></div>
                                             ) : (
-                                                <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />
+                                                <SendIcon className="w-4 h-4 text-slate-900 ml-[-2px] mt-[2px]" />
                                             )}
                                         </button>
                                     </div>
