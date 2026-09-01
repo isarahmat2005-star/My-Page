@@ -1904,6 +1904,7 @@ export default function App() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
                         {/* Download Panel */}
                         <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2 shrink-0">
