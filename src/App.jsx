@@ -1537,7 +1537,7 @@ export default function App() {
                     {/* ========================================= */}
                     {/* AREA TENGAH (BISA DI-SCROLL, TERMASUK HEADER) */}
                     {/* ========================================= */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll flex flex-col bg-slate-50">
+                    <div className="flex-1 overflow-y-scroll overflow-x-hidden custom-scroll flex flex-col bg-slate-50">
                         
                         {/* --- BAGIAN ATAS (KINI IKUT SCROLL) --- */}
                         <div className="p-3 lg:p-4 pb-2 shrink-0 flex flex-col gap-3">
