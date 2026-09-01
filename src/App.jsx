@@ -1272,7 +1272,7 @@ export default function App() {
 
         let displayHtml = userText;
         if (editorAttachments.length > 0) {
-            const attachmentHtml = editorAttachments.map(a => `<span class="bg-primary/20 text-primaryDark px-1.5 rounded inline-block text-[10px] border border-primary/30 mr-1">[${a.display}]</span>`).join('');
+            const attachmentHtml = editorAttachments.map(a => `<span class="bg-primary/20 text-primaryDark px-2 py-0.5 rounded-lg inline-block text-xs border border-primary/30 mr-1 mb-1 shadow-sm">${a.display}</span>`).join('');
             displayHtml = attachmentHtml + '<br>' + userText.replace(/\n/g, '<br>');
         } else {
             displayHtml = userText.replace(/\n/g, '<br>');
@@ -1281,8 +1281,7 @@ export default function App() {
         setEditorPrompt('');
         setIsEditorSending(true);
 
-        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. Jika membuat kode baru, wajib gunakan Tailwind CSS via CDN. Output MURNI kodenya saja tanpa penjelasan.\n`;
-        let finalPrompt = '';
+        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. PENTING: Jika pengguna HANYA bertanya atau mengobrol (tidak meminta perubahan kode), jawablah dengan teks biasa seperti asisten chat. JIKA pengguna meminta untuk memodifikasi atau membuat kode baru, Anda WAJIB membungkus kodenya menggunakan format markdown \`\`\`html ... \`\`\` tanpa penjelasan panjang.\n`;
         let isGithubMode = false;
         let isUbahFrontEnd = false;
 
@@ -1334,11 +1333,18 @@ export default function App() {
             } else {
                 let cleanCode = resultText.trim();
                 const singleMatch = cleanCode.match(/```(?:html)?\s*\n?([\s\S]*?)```/i);
-                if (singleMatch) cleanCode = singleMatch[1].trim();
-                const next = { ...fileSystem, [activeFile]: { content: cleanCode } };
-                setFileSystem(next);
-                saveEditorHistory('AI Response', next);
-                setEditorChat(prev => [...prev, { role: 'ai', text: 'Instruksi berhasil dieksekusi. Silakan lihat di tab Preview/Kode.' }]);
+                
+                if (singleMatch) {
+                    // Jika AI memberikan blok kode (berarti ada perintah edit kode)
+                    cleanCode = singleMatch[1].trim();
+                    const next = { ...fileSystem, [activeFile]: { content: cleanCode } };
+                    setFileSystem(next);
+                    saveEditorHistory('AI Response', next);
+                    setEditorChat(prev => [...prev, { role: 'ai', text: 'Instruksi berhasil dieksekusi. Silakan lihat di tab Preview/Kode.' }]);
+                } else {
+                    // Jika tidak ada blok kode, berarti AI merespon sebagai asisten chat biasa
+                    setEditorChat(prev => [...prev, { role: 'ai', text: cleanCode.replace(/\n/g, '<br>') }]);
+                }
             }
         } catch (err) {
             setEditorChat(prev => [...prev, { role: 'ai', text: `<span class="text-red-500 font-bold">Error:</span> Gagal (${err.message})` }]);
@@ -1880,7 +1886,7 @@ export default function App() {
                                     {editorAttachments.length > 0 && (
                                         <div className="flex flex-wrap gap-1.5 px-2 pt-2 empty:hidden">
                                             {editorAttachments.map(att => (
-                                                <div key={att.id} className="bg-primary/20 text-primaryDark text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1.5 shadow-sm border border-primary/30">
+                                                <div key={att.id} className="bg-primary/20 text-primaryDark text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm border border-primary/30">
                                                     <span>{att.display}</span>
                                                     <button onClick={() => setEditorAttachments(prev => prev.filter(a => a.id !== att.id))} className="text-primary hover:text-red-600 transition"><XCircleIcon className="w-3 h-3" /></button>
                                                 </div>
@@ -2184,7 +2190,7 @@ export default function App() {
                                 {selectedElementTag === '<img>' && (
                                     <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                                            <ImageIcon className="w-3 h-3" /> URL Gambar (SRC)
+                                            <ImageIcon className="w-3 h-3" /> URL Gambar
                                         </label>
                                         <textarea value={elementProps.src} onChange={(e) => applyPropertyChange('src', e.target.value)} rows="3" placeholder="https://..." className="w-full text-xs p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none custom-scroll bg-slate-50 transition" />
                                     </div>
@@ -2442,7 +2448,7 @@ export default function App() {
                                             <ChevronDownIcon className="w-3 h-3 text-slate-400 shrink-0" />
                                         </button>
                                         {showEditorConfigFontDropdown && (
-                                            <div className="absolute top-full left-0 w-full max-h-[220px] overflow-y-auto bg-white border border-slate-200 rounded shadow-xl z-[60] custom-scroll mt-1">
+                                            <div className="absolute top-full left-0 w-full max-h-[400px] overflow-y-auto bg-white border border-slate-200 rounded shadow-xl z-[60] custom-scroll mt-1">
                                                 {FONTS.map(f => (
                                                     <div key={f.id} onClick={() => { setEditorConfigFont(f.id); setShowEditorConfigFontDropdown(false); }} className="px-3 py-2 border-b border-slate-100 hover:bg-primary/10 cursor-pointer text-slate-800 text-[12px]" style={{ fontFamily: `'${f.id}', sans-serif` }}>
                                                         {f.name}
