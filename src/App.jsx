@@ -1701,9 +1701,6 @@ export default function App() {
                                         <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 flex justify-between items-center tracking-wider uppercase">
                                             <span>Riwayat Versi</span><span className="bg-primary/20 text-primaryDark px-1.5 py-0.5 rounded">{codeHistory.length}</span>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto custom-scroll flex flex-col">
-                                            {/* Mapping History Nanti */}
-                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1720,7 +1717,7 @@ export default function App() {
                                 <p className="text-[11px] text-slate-500 max-w-[200px] leading-relaxed">Klik teks, tombol, atau kotak di layar tengah untuk mengedit desainnya.</p>
                             </div>
 
-                            {/* Form Inspector (Muncul jika ada elemen yang diklik) */}
+                            {/* Form Inspector */}
                             <div className={`flex flex-col gap-4 transition-opacity ${selectedElementId ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-[10px] font-bold tracking-wider font-mono bg-primary/20 text-primaryDark px-2 py-0.5 rounded shadow-sm">{selectedElementTag}</span>
@@ -1754,7 +1751,7 @@ export default function App() {
                                     </div>
                                 </div>
 
-                                {/* Bagian Tipografi (Tambahan yang sebelumnya hilang) */}
+                                {/* Bagian Tipografi */}
                                 <div className="bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
                                     <button onClick={() => setInspectorAccordion(inspectorAccordion === 'font' ? null : 'font')} className="w-full flex justify-between items-center text-[10px] font-bold text-slate-700 uppercase tracking-wide hover:text-primaryDark transition-colors outline-none group p-3">
                                         <span className="flex items-center gap-1.5"><TypeIcon className="w-3 h-3 text-slate-400 group-hover:text-primaryDark" /> Tipografi Font</span>
@@ -1823,7 +1820,7 @@ export default function App() {
                     </aside>
                 )}
             </main>
-            
+
             {/* PREVIEW MODAL */}
             {previewCard && (
                 <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 p-2 sm:p-4 md:p-8 backdrop-blur-sm transition-opacity" onClick={() => setPreviewCard(null)}>
