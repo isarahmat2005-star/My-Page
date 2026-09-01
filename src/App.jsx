@@ -11,7 +11,7 @@ import {
     UserIcon, LogOutIcon, BotIcon, GithubIcon, DesktopIcon, MenuIcon, UploadIcon, 
     LayoutBoxIcon, CursorSelectIcon, PublishIcon
 } from './icons.jsx';
-import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard, downloadTextFile, downloadNamedFilesZip } from './utils.js';
+import { callGeminiApiViaProxy, downloadZipFiles, copyToClipboard } from './utils.js';
 
 // =====================================================================
 // === KONFIGURASI GOOGLE APPS SCRIPT (SATPAM LOGIN) ===
@@ -22,11 +22,10 @@ const GAS_AUTH_URL = "https://script.google.com/macros/s/AKfycbwSrRoGVoqdgSEHWWv
 // --- INDEXED DB: UNTUK DEVICE ID & AUTO-SAVE KARTU HASIL GENERATE ---
 const META_STORE_NAME = 'meta_store';
 const CARDS_STORE_NAME = 'cards_store';
-const STORAGE_STORE_NAME = 'storage_store';
 
 const initMetaDB = () => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('PageAiMetaDB', 2);
+        const request = indexedDB.open('PageAiMetaDB', 1);
         request.onerror = (e) => reject("IndexedDB error: " + e.target.errorCode);
         request.onsuccess = (e) => resolve(e.target.result);
         request.onupgradeneeded = (e) => {
@@ -36,9 +35,6 @@ const initMetaDB = () => {
             }
             if (!db.objectStoreNames.contains(CARDS_STORE_NAME)) {
                 db.createObjectStore(CARDS_STORE_NAME, { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains(STORAGE_STORE_NAME)) {
-                db.createObjectStore(STORAGE_STORE_NAME, { keyPath: 'id' });
             }
         };
     });
@@ -62,33 +58,6 @@ const loadDeviceIdFromDB = () => {
             req.onerror = () => resolve(null);
         } catch (err) { resolve(null); }
     });
-};
-
-// --- HELPER CRUD: STORAGE (FILE HTML TERSIMPAN) ---
-const saveStorageItemToDB = async (item) => {
-    try {
-        const db = await initMetaDB();
-        const tx = db.transaction(STORAGE_STORE_NAME, 'readwrite');
-        tx.objectStore(STORAGE_STORE_NAME).put(item);
-    } catch (err) { console.error('Gagal simpan item storage:', err); }
-};
-const loadStorageItemsFromDB = () => {
-    return new Promise(async (resolve) => {
-        try {
-            const db = await initMetaDB();
-            const tx = db.transaction(STORAGE_STORE_NAME, 'readonly');
-            const req = tx.objectStore(STORAGE_STORE_NAME).getAll();
-            req.onsuccess = () => resolve(req.result || []);
-            req.onerror = () => resolve([]);
-        } catch (err) { resolve([]); }
-    });
-};
-const deleteStorageItemFromDB = async (id) => {
-    try {
-        const db = await initMetaDB();
-        const tx = db.transaction(STORAGE_STORE_NAME, 'readwrite');
-        tx.objectStore(STORAGE_STORE_NAME).delete(id);
-    } catch (err) { console.error('Gagal hapus item storage:', err); }
 };
 
 // --- HELPER CRUD: KARTU HASIL GENERATE (kode HTML) ---
@@ -303,19 +272,6 @@ export default function App() {
     const [editorPrompt, setEditorPrompt] = useState('');
     const [editorAttachments, setEditorAttachments] = useState([]);
     const [showEditorActionMenu, setShowEditorActionMenu] = useState(false);
-    const editorChatAbortRef = useRef(null);
-
-    // --- State Toggle Panel Editor Manual (Inspector Visual) ---
-    // Default NONAKTIF: klik elemen di preview tidak melakukan seleksi sampai diaktifkan.
-    const [isInspectorModeOn, setIsInspectorModeOn] = useState(false);
-
-    // --- State Tab STORAGE (penyimpanan file HTML) ---
-    const [storageItems, setStorageItems] = useState([]);
-    const [isStorageZipping, setIsStorageZipping] = useState(false);
-    const [editStorageId, setEditStorageId] = useState(null);
-    const [editStorageCode, setEditStorageCode] = useState('');
-    const [editStorageTab, setEditStorageTab] = useState('code');
-    const storageUploadRef = useRef(null);
     
     // --- State Workspace (CUKUP 1 KALI SAJA) ---
     const [workspaceTab, setWorkspaceTab] = useState('preview'); // 'preview' | 'code'
@@ -380,21 +336,7 @@ export default function App() {
             const cleaned = savedCards.map(c => c.status === 'processing' ? { ...c, status: 'pending' } : c);
             setCardsState(cleaned);
         }
-        const savedStorage = await loadStorageItemsFromDB();
-        if (savedStorage.length > 0) {
-            setStorageItems(savedStorage.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-        }
     };
-
-    // --- AUTO-SIMPAN storageItems KE INDEXEDDB (debounce 800ms, hanya kalau sudah login) ---
-    const storageSyncTimeout = useRef(null);
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        clearTimeout(storageSyncTimeout.current);
-        storageSyncTimeout.current = setTimeout(() => {
-            storageItems.forEach(item => saveStorageItemToDB(item));
-        }, 800);
-    }, [storageItems, isAuthenticated]);
 
     // --- MUAT STATE EDITOR IDE (fileSystem + activeFile) DARI INDEXEDDB SAAT LOGIN ---
     // (Hook ini WAJIB ada sebelum early return login-gate, lihat Rules of Hooks di bawah)
@@ -808,15 +750,6 @@ export default function App() {
         }
     };
 
-    const handleSaveCardToStorage = (card) => {
-        if (!card || !card.code) return;
-        const titleMatch = card.code.match(/<title>(.*?)<\/title>/i);
-        const name = (titleMatch && titleMatch[1] ? titleMatch[1].trim() : (card.title || 'Hasil-Landing-Page'));
-        const item = { id: 'storage_' + Date.now(), name, code: card.code, createdAt: Date.now() };
-        setStorageItems(prev => [item, ...prev]);
-        showToast('Kartu berhasil disimpan ke Storage', 'success');
-    };
-
     const handlePublishToVercel = async (card) => {
         setIsPublishing(true);
         try {
@@ -1082,14 +1015,10 @@ export default function App() {
             if(htmlCode.includes('</head>')) htmlCode = htmlCode.replace('</head>', fontLinks + '\n</head>'); 
             else htmlCode = fontLinks + '\n' + htmlCode;
         }
-        // Skrip seleksi elemen HANYA disuntik saat panel Editor Manual (Inspector) aktif.
-        // Saat nonaktif, preview berlaku normal — klik elemen tidak melakukan apa-apa khusus.
-        if (isInspectorModeOn) {
-            if(htmlCode.includes('</body>')) { 
-                htmlCode = htmlCode.replace('</body>', inspectorScript + '\n</body>'); 
-            } else { 
-                htmlCode += '\n' + inspectorScript; 
-            }
+        if(htmlCode.includes('</body>')) { 
+            htmlCode = htmlCode.replace('</body>', inspectorScript + '\n</body>'); 
+        } else { 
+            htmlCode += '\n' + inspectorScript; 
         }
         return htmlCode;
     };
@@ -1241,98 +1170,45 @@ export default function App() {
     };
 
     // =====================================================================
-    // === EDITOR IDE: NAMA EKSPOR OTOMATIS (pola sama seperti tab Generator: ===
-    // === ambil dari <title>, 4 kata pertama, hanya alfanumerik & strip)    ===
-    // =====================================================================
-    const getEditorExportName = () => {
-        const content = fileSystem[activeFile]?.content || '';
-        const titleMatch = content.match(/<title>(.*?)<\/title>/i);
-        let base = (titleMatch && titleMatch[1]) ? titleMatch[1].trim() : (activeFile || '').replace(/\.[^/.]+$/, '');
-        base = base.split(' ').slice(0, 4).join('-').replace(/[^a-zA-Z0-9-]/g, '');
-        return base || 'Hasil-Web';
-    };
-    const editorExportName = getEditorExportName();
-
-    // =====================================================================
-    // === EDITOR IDE: EKSPOR (DOWNLOAD HTML) ===
+    // === EDITOR IDE: EKSPOR (DOWNLOAD HTML / ZIP) ===
     // =====================================================================
     const handleDownloadEditorHTML = () => {
         const htmlStr = fileSystem[activeFile]?.content || '';
         if (!htmlStr) { showToast('File aktif masih kosong', 'error'); return; }
-        downloadTextFile(`${editorExportName}.html`, htmlStr, 'text/html');
+        const blob = new Blob([htmlStr], { type: 'text/html' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = activeFile;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
     };
 
-    // =====================================================================
-    // === EDITOR IDE: SIMPAN KE STORAGE ===
-    // =====================================================================
-    const handleSaveEditorToStorage = () => {
-        const htmlStr = fileSystem[activeFile]?.content || '';
-        if (!htmlStr) { showToast('File aktif masih kosong', 'error'); return; }
-        const item = { id: 'storage_' + Date.now(), name: editorExportName, code: htmlStr, createdAt: Date.now() };
-        setStorageItems(prev => [item, ...prev]);
-        showToast('Berhasil disimpan ke Storage', 'success');
-    };
-
-    // =====================================================================
-    // === TAB STORAGE: UPLOAD, SALIN, HAPUS, EDIT, DOWNLOAD ===
-    // =====================================================================
-    const handleStorageUpload = (e) => {
-        const files = Array.from(e.target.files || []);
-        files.forEach(file => {
-            if (!file.name.toLowerCase().endsWith('.html')) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const content = ev.target.result;
-                const item = { id: 'storage_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5), name: file.name.replace(/\.html$/i, ''), code: content, createdAt: Date.now() };
-                setStorageItems(prev => [item, ...prev]);
-            };
-            reader.readAsText(file);
-        });
-        e.target.value = '';
-    };
-
-    const handleCopyStorageItem = (item) => {
-        copyToClipboard(item.code);
-        showToast('Kode HTML disalin ke Clipboard', 'success');
-    };
-
-    const handleDeleteStorageItem = (id) => {
-        setConfirmData({
-            title: 'Hapus File Storage?',
-            desc: 'File ini akan dihapus permanen dari Storage.',
-            action: async () => {
-                await deleteStorageItemFromDB(id);
-                setStorageItems(prev => prev.filter(i => i.id !== id));
-            }
-        });
-    };
-
-    const handleDownloadStorageItem = (item) => {
-        downloadTextFile(`${item.name || 'file'}.html`, item.code || '', 'text/html');
-    };
-
-    const handleDownloadAllStorageZip = async () => {
-        if (storageItems.length === 0) return;
-        setIsStorageZipping(true);
+    const handleDownloadEditorZip = async () => {
+        const fileKeys = Object.keys(fileSystem);
+        if (fileKeys.length === 0) { return; }
+        setIsZipping(true);
         try {
-            await downloadNamedFilesZip(storageItems, 'Storage-HTML');
+            let JSZipLib;
+            try { JSZipLib = (await import('jszip')).default; } catch (impErr) { JSZipLib = window.JSZip; }
+            if (!JSZipLib) throw new Error('Modul JSZip tidak tersedia.');
+            const zip = new JSZipLib();
+            fileKeys.forEach(name => zip.file(name, fileSystem[name].content));
+            const content = await zip.generateAsync({ type: 'blob' });
+            const zipUrl = URL.createObjectURL(content);
+            const link = document.createElement('a');
+            link.href = zipUrl;
+            link.download = 'Web-Project.zip';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(zipUrl);
         } catch (err) {
             setAlertData({ title: 'Error ZIP', desc: 'Gagal menyusun ZIP: ' + err.message });
         } finally {
-            setIsStorageZipping(false);
+            setIsZipping(false);
         }
-    };
-
-    const handleOpenEditStorage = (item) => {
-        setEditStorageId(item.id);
-        setEditStorageCode(item.code || '');
-        setEditStorageTab('code');
-    };
-
-    const handleSaveEditStorage = () => {
-        setStorageItems(prev => prev.map(i => i.id === editStorageId ? { ...i, code: editStorageCode } : i));
-        setEditStorageId(null);
-        showToast('Perubahan disimpan', 'success');
     };
 
     // =====================================================================
@@ -1557,16 +1433,6 @@ export default function App() {
         }
     };
 
-    // 6. Toggle Panel Editor Manual (Inspector Visual) — saat dimatikan, preview
-    //    kembali normal (skrip seleksi tidak disuntik & elemen yang terpilih dilepas).
-    const toggleInspectorMode = () => {
-        setIsInspectorModeOn(prev => {
-            const next = !prev;
-            if (!next) setSelectedElementId(null);
-            return next;
-        });
-    };
-
     return (
         <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col text-slate-900 bg-slate-100 font-sans">
             <style>{`
@@ -1603,7 +1469,7 @@ export default function App() {
             <main className="w-full flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative min-h-0 bg-slate-100">
                 
                 {/* SIDEBAR KIRI */}
-                <aside className={`w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative ${(sidebarTab === 'editor' || sidebarTab === 'storage') ? 'mobile-fixed-panel' : ''}`}>
+                <aside className={`w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative ${sidebarTab === 'editor' ? 'mobile-fixed-panel' : ''}`}>
                     
                     {/* ========================================= */}
                     {/* AREA TENGAH (BISA DI-SCROLL, TERMASUK HEADER) */}
@@ -1650,12 +1516,6 @@ export default function App() {
                                         className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
                                     >
                                         <CodeIcon className="w-3.5 h-3.5" /> Editor IDE
-                                    </button>
-                                    <button 
-                                        onClick={() => setSidebarTab('storage')} 
-                                        className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'storage' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
-                                    >
-                                        <UploadIcon className="w-3.5 h-3.5" /> Storage
                                     </button>
                                 </div>
                             </div>
@@ -1957,29 +1817,6 @@ export default function App() {
                             </div>
                         )}
 
-                        {/* KONTEN TAB: STORAGE */}
-                        {sidebarTab === 'storage' && (
-                            <div className="flex-1 flex flex-col min-h-0 bg-slate-50 relative px-3 lg:px-4 py-2 gap-3">
-                                <div className="p-3 border border-slate-200 bg-white rounded-lg shadow-sm shrink-0">
-                                    <h2 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                                        <UploadIcon className="w-3.5 h-3.5 text-primaryDark" /> Storage File HTML
-                                    </h2>
-                                    <p className="text-[11px] text-slate-500 leading-relaxed">Simpan file HTML di sini agar mudah dikelola. Bisa diisi dengan upload manual, atau dari tombol "Simpan di Storage" di tab Generator maupun Editor IDE.</p>
-                                </div>
-                                <input type="file" ref={storageUploadRef} accept=".html" multiple className="hidden" onChange={handleStorageUpload} />
-                                <button onClick={() => storageUploadRef.current?.click()} className="w-full py-3 rounded-lg border-2 border-dashed border-primary/40 text-primaryDark text-xs font-bold uppercase tracking-wide hover:bg-primary/10 transition flex items-center justify-center gap-2 shrink-0">
-                                    <UploadIcon className="w-3.5 h-3.5" /> Upload File HTML
-                                </button>
-                                <div className="flex-1 flex items-center justify-center text-center px-4">
-                                    <div>
-                                        <div className="w-14 h-14 mx-auto bg-primary/5 border border-primary/20 text-primary/60 rounded-full flex items-center justify-center mb-3"><FileTextIcon className="w-6 h-6" /></div>
-                                        <p className="text-xs font-bold text-slate-600">{storageItems.length} File Tersimpan</p>
-                                        <p className="text-[11px] text-slate-400 mt-1">Lihat & kelola daftarnya di panel tengah.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                     </div>
 
                     {/* ========================================= */}
@@ -2092,15 +1929,6 @@ export default function App() {
                                 </div>
                             </div>
                         )}
-
-                        {/* FOOTER: STORAGE (Download Semua ZIP) */}
-                        {sidebarTab === 'storage' && (
-                            <div className="p-3 lg:p-4 shadow-[0_-4px_10px_-5px_rgba(0,0,0,0.05)]">
-                                <button onClick={handleDownloadAllStorageZip} disabled={storageItems.length === 0 || isStorageZipping} className={`w-full text-xs font-bold rounded-lg border shadow transition-colors flex items-center justify-center gap-2 uppercase tracking-wide py-2.5 ${storageItems.length > 0 ? 'bg-green-600 text-white border-green-700 hover:-translate-y-0.5' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-80'}`}>
-                                    {isStorageZipping ? <CustomSpinner className="w-3.5 h-3.5" /> : <DownloadIcon className="w-3.5 h-3.5" />} DOWNLOAD SEMUA (ZIP)
-                                </button>
-                            </div>
-                        )}
                         
                     </div>
                 </aside>
@@ -2108,7 +1936,7 @@ export default function App() {
                 {/* ============================================================== */}
                 {/* BAGIAN TENGAH: WORKSPACE (GENERATOR KARTU ATAU EDITOR IDE)     */}
                 {/* ============================================================== */}
-                <section className={`flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100 shadow-inner z-10 ${(sidebarTab === 'editor' || sidebarTab === 'storage') ? 'mobile-fixed-panel' : ''}`}>
+                <section className={`flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100 shadow-inner z-10 ${sidebarTab === 'editor' ? 'mobile-fixed-panel' : ''}`}>
                     
                     {/* --- MODE 1: FRONT END (GENERATOR KARTU) --- */}
                     {sidebarTab === 'frontend' && (
@@ -2180,7 +2008,7 @@ export default function App() {
                                                                 {card.status === 'processing' || card.status === 'pending' ? (
                                                                     <p className="text-[12px] text-slate-500 font-bold tracking-wide text-center h-full flex items-center justify-center">Memproses<span className="dot-anim inline-block w-4 text-left"></span></p>
                                                                 ) : (
-                                                                    <pre className="text-[7px] text-slate-700 font-mono leading-tight whitespace-pre-wrap break-words"><code>{card.code || ''}</code></pre>
+                                                                    <pre className="text-[7px] text-slate-700 font-mono leading-tight whitespace-pre-wrap break-words"><code>{card.code ? card.code.substring(0, 300) + '...' : ''}</code></pre>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -2299,10 +2127,6 @@ export default function App() {
                                 <EditIcon className="w-3.5 h-3.5" /> Editor
                             </h2>
                             <div className="flex items-center gap-1.5 relative">
-                                <button onClick={toggleInspectorMode} className={`w-7 h-7 rounded flex items-center justify-center transition shadow-sm border ${isInspectorModeOn ? 'bg-primary text-slate-900 border-primary' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100'}`} title={isInspectorModeOn ? 'Matikan Editor Manual' : 'Aktifkan Editor Manual'}>
-                                    <CursorSelectIcon className="w-3.5 h-3.5" />
-                                </button>
-                                <div className="w-px h-4 bg-slate-200 mx-0.5"></div>
                                 <button onClick={undoEditorCode} disabled={historyIndex <= 0} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Undo"><UndoIcon className="w-3.5 h-3.5" /></button>
                                 <button onClick={redoEditorCode} disabled={historyIndex >= codeHistory.length - 1} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Redo"><RedoIcon className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => setShowHistoryMenu(!showHistoryMenu)} className="w-7 h-7 rounded bg-white border border-slate-200 text-primary flex items-center justify-center hover:bg-slate-100 transition shadow-sm" title="History"><ClockIcon className="w-3.5 h-3.5" /></button>
@@ -2339,31 +2163,31 @@ export default function App() {
                                 <div className="w-16 h-16 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center mb-4">
                                     <CursorSelectIcon className="w-6 h-6" />
                                 </div>
-                                <h3 className="text-sm font-bold text-slate-700 mb-2 tracking-wide uppercase">{isInspectorModeOn ? 'Pilih Elemen di Preview' : 'Editor Manual Nonaktif'}</h3>
-                                <p className="text-[11px] text-slate-500 max-w-[200px] leading-relaxed">{isInspectorModeOn ? 'Klik teks, tombol, atau kotak di layar tengah untuk mengedit desainnya.' : 'Aktifkan dengan tombol kursor di pojok kanan atas untuk mulai mengedit elemen secara visual.'}</p>
+                                <h3 className="text-sm font-bold text-slate-700 mb-2 tracking-wide uppercase">Pilih Elemen di Preview</h3>
+                                <p className="text-[11px] text-slate-500 max-w-[200px] leading-relaxed">Klik teks, tombol, atau kotak di layar tengah untuk mengedit desainnya.</p>
                             </div>
 
                             {/* Form Inspector */}
                             <div className={`flex flex-col gap-4 transition-opacity ${selectedElementId ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-[10px] font-bold tracking-wider font-mono bg-primary/20 text-primaryDark px-2 py-0.5 rounded shadow-sm">{selectedElementTag}</span>
-                                    <button onClick={handleDeselectElement} className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition rounded px-2 py-0.5 flex items-center gap-1"><XCircleIcon className="w-3 h-3" /> Tutup</button>
+                                    <button onClick={handleDeselectElement} className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition border border-transparent hover:border-red-200 rounded px-2 py-0.5">Tutup X</button>
                                 </div>
 
-                                {/* Bagian URL Gambar (khusus elemen IMG) */}
-                                {selectedElementTag === '<img>' && (
-                                    <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><ImageIcon className="w-3 h-3" /> URL Gambar</label>
-                                        <input type="text" value={elementProps.src} onChange={(e) => applyPropertyChange('src', e.target.value)} placeholder="https://..." className="w-full text-[11px] p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-slate-50 transition font-mono" />
-                                    </div>
-                                )}
-
                                 {/* Bagian Konten Teks */}
-                                {selectedElementTag !== '<img>' && (
                                 <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><FileTextIcon className="w-3 h-3" /> Konten Teks</label>
                                     <textarea value={elementProps.text} onChange={(e) => applyPropertyChange('text', e.target.value)} rows="3" className="w-full text-xs p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none custom-scroll bg-slate-50 transition" />
                                 </div>
+
+                                {/* Bagian URL Gambar (Hanya muncul jika tag IMG) */}
+                                {selectedElementTag === '<img>' && (
+                                    <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                            <ImageIcon className="w-3 h-3" /> URL Gambar (SRC)
+                                        </label>
+                                        <textarea value={elementProps.src} onChange={(e) => applyPropertyChange('src', e.target.value)} rows="3" placeholder="https://..." className="w-full text-xs p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none custom-scroll bg-slate-50 transition" />
+                                    </div>
                                 )}
 
                                 {/* Bagian Warna */}
@@ -2444,16 +2268,12 @@ export default function App() {
                         {/* Download Panel */}
                         <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2 shrink-0">
                             <p className="text-[10px] text-center font-bold text-slate-500 mb-1 tracking-widest uppercase">EKSPOR PROJECT</p>
-                            <div className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-2">
-                                <FileTextIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <input type="text" value={editorExportName} readOnly disabled className="w-full bg-transparent text-xs font-mono font-bold text-slate-500 outline-none cursor-not-allowed truncate" title="Nama dibuat otomatis dari judul kode" />
-                            </div>
                             <div className="flex gap-2">
-                                <button onClick={handleSaveEditorToStorage} className="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
-                                    <UploadIcon className="w-3.5 h-3.5" /> STORAGE
+                                <button onClick={handleDownloadEditorHTML} className="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
+                                    <FileTextIcon className="w-3.5 h-3.5" /> HTML
                                 </button>
-                                <button onClick={handleDownloadEditorHTML} className="flex-1 bg-primary text-slate-900 hover:bg-primaryDark font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
-                                    <DownloadIcon className="w-3.5 h-3.5" /> HTML
+                                <button onClick={handleDownloadEditorZip} disabled={isZipping} className="flex-1 bg-primary text-slate-900 hover:bg-primaryDark font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isZipping ? <CustomSpinner className="w-3.5 h-3.5" /> : <DownloadIcon className="w-3.5 h-3.5" />} ZIP
                                 </button>
                             </div>
                         </div>
