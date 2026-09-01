@@ -1281,7 +1281,7 @@ export default function App() {
         setEditorPrompt('');
         setIsEditorSending(true);
 
-        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. PENTING: Jika pengguna HANYA bertanya atau mengobrol (tidak meminta perubahan kode), jawablah dengan teks biasa seperti asisten chat. JIKA pengguna meminta untuk memodifikasi atau membuat kode baru, Anda WAJIB membungkus kodenya menggunakan format markdown \`\`\`html ... \`\`\` tanpa penjelasan panjang.\n`;
+        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Web Architect. ATURAN SUPER KETAT:\n1. JIKA user HANYA menyapa, ngobrol, atau bertanya ringan (TIDAK meminta modifikasi kode), ANDA WAJIB HANYA MENJAWAB DENGAN TEKS BIASA. DILARANG memberikan blok kode HTML sama sekali.\n2. JIKA user meminta perubahan kode, WAJIB bungkus kodenya dengan \`\`\`html ... \`\`\`.\n`;
         let isGithubMode = false;
         let isUbahFrontEnd = false;
 
@@ -1335,14 +1335,19 @@ export default function App() {
                 const singleMatch = cleanCode.match(/```(?:html)?\s*\n?([\s\S]*?)```/i);
                 
                 if (singleMatch) {
-                    // Jika AI memberikan blok kode (berarti ada perintah edit kode)
-                    cleanCode = singleMatch[1].trim();
-                    const next = { ...fileSystem, [activeFile]: { content: cleanCode } };
+                    // Eksekusi pembaruan kode ke file HTML
+                    const htmlCode = singleMatch[1].trim();
+                    const next = { ...fileSystem, [activeFile]: { content: htmlCode } };
                     setFileSystem(next);
                     saveEditorHistory('AI Response', next);
-                    setEditorChat(prev => [...prev, { role: 'ai', text: 'Instruksi berhasil dieksekusi. Silakan lihat di tab Preview/Kode.' }]);
+                    
+                    // Ambil sisa teks obrolan (jika AI memberi pesan tambahan)
+                    let chatReply = cleanCode.replace(/```(?:html)?\s*\n?([\s\S]*?)```/i, '').trim();
+                    if (!chatReply) chatReply = 'Instruksi berhasil dieksekusi. Silakan cek tab Preview/Kode.';
+                    
+                    setEditorChat(prev => [...prev, { role: 'ai', text: chatReply.replace(/\n/g, '<br>') }]);
                 } else {
-                    // Jika tidak ada blok kode, berarti AI merespon sebagai asisten chat biasa
+                    // Jika murni obrolan santai (tidak ada kode sama sekali)
                     setEditorChat(prev => [...prev, { role: 'ai', text: cleanCode.replace(/\n/g, '<br>') }]);
                 }
             }
@@ -1813,8 +1818,12 @@ export default function App() {
                                     ))}
                                     {isEditorSending && (
                                         <div className="p-3 text-sm text-slate-500 w-11/12 font-sans italic flex items-center gap-2 ml-2">
-                                            <CustomSpinner className="w-4 h-4 text-primary" />
-                                            <span className="font-semibold">Memproses instruksi...</span>
+                                            <style>{`
+                                                @keyframes typeMemproses { 0% {content:'M'} 8% {content:'Me'} 16% {content:'Mem'} 25% {content:'Memp'} 33% {content:'Mempr'} 41% {content:'Mempro'} 50% {content:'Mempros'} 58% {content:'Memprose'} 66% {content:'Memproses'} 75% {content:'Memproses.'} 83% {content:'Memproses..'} 91% {content:'Memproses...'} 100% {content:'M'} }
+                                                .anim-memproses::after { content: 'M'; animation: typeMemproses 1.5s infinite; }
+                                            `}</style>
+                                            <CustomSpinner className="w-4 h-4 text-primary shrink-0" />
+                                            <span className="font-semibold anim-memproses"></span>
                                         </div>
                                     )}
                                 </div>
@@ -1884,11 +1893,11 @@ export default function App() {
                                     
                                     {/* Chips Attachments */}
                                     {editorAttachments.length > 0 && (
-                                        <div className="flex flex-wrap gap-1.5 px-2 pt-2 empty:hidden">
+                                        <div className="flex flex-nowrap overflow-x-auto custom-scroll gap-1.5 px-2 pt-2 pb-1 empty:hidden">
                                             {editorAttachments.map(att => (
-                                                <div key={att.id} className="bg-primary/20 text-primaryDark text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm border border-primary/30">
+                                                <div key={att.id} className="bg-primary/20 text-primaryDark text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm border border-primary/30 shrink-0">
                                                     <span>{att.display}</span>
-                                                    <button onClick={() => setEditorAttachments(prev => prev.filter(a => a.id !== att.id))} className="text-primary hover:text-red-600 transition"><XCircleIcon className="w-3 h-3" /></button>
+                                                    <button onClick={() => setEditorAttachments(prev => prev.filter(a => a.id !== att.id))} className="text-primary hover:text-red-600 transition"><XCircleIcon className="w-3 h-3 shrink-0" /></button>
                                                 </div>
                                             ))}
                                         </div>
@@ -1928,8 +1937,12 @@ export default function App() {
                                                 <PlusIcon className="w-4 h-4" />
                                             </button>
                                         </div>
-                                        <button onClick={handleEditorSendPrompt} disabled={isEditorSending || (!editorPrompt.trim() && editorAttachments.length === 0)} className="w-9 h-9 rounded-full bg-primary hover:bg-primaryDark text-slate-900 flex items-center justify-center transition shadow-md disabled:opacity-50 z-10">
-                                            {isEditorSending ? <CustomSpinner className="w-4 h-4" /> : <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />}
+                                        <button onClick={handleEditorSendPrompt} disabled={!isEditorSending && !editorPrompt.trim() && editorAttachments.length === 0} className={`w-9 h-9 rounded-full flex items-center justify-center transition shadow-md z-10 shrink-0 ${isEditorSending ? 'bg-red-500 hover:bg-red-600 cursor-default' : 'bg-primary hover:bg-primaryDark text-slate-900 disabled:opacity-50'}`}>
+                                            {isEditorSending ? (
+                                                <div className="w-3.5 h-3.5 bg-white rounded-[3px]"></div>
+                                            ) : (
+                                                <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />
+                                            )}
                                         </button>
                                     </div>
                                 </div>
