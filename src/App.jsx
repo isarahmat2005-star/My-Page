@@ -826,6 +826,189 @@ export default function App() {
         );
     }
 
+    // =====================================================================
+    // === LOGIKA EDITOR IDE & VISUAL INSPECTOR ===
+    // =====================================================================
+
+    // 1. Script yang akan di-inject ke dalam Iframe agar bisa di-klik
+    const inspectorScript = `
+        <script>
+            let lastHovered = null; let currentSelected = null;
+            function addOutline(el, color, style) { if(!el) return; el.style.outline = \`2px \${style} \${color}\`; el.style.outlineOffset = '-2px'; }
+            function removeOutline(el) { if(!el) return; el.style.outline = ''; el.style.outlineOffset = ''; }
+            
+            document.addEventListener('mouseover', (e) => { 
+                if(e.target === document.body || e.target === document.documentElement) return; 
+                if(currentSelected && e.target === currentSelected) return; 
+                if(lastHovered && lastHovered !== currentSelected) removeOutline(lastHovered); 
+                lastHovered = e.target; 
+                addOutline(lastHovered, '#cbd5e1', 'dashed'); 
+            });
+            
+            document.addEventListener('mouseout', (e) => { 
+                if(lastHovered && lastHovered !== currentSelected) removeOutline(lastHovered); 
+            });
+            
+            document.addEventListener('click', (e) => {
+                if(e.target.tagName === 'A') e.preventDefault(); 
+                if(e.target === document.body || e.target === document.documentElement) return;
+                e.preventDefault(); e.stopPropagation(); 
+                
+                if(currentSelected) removeOutline(currentSelected); 
+                currentSelected = e.target;
+                if(lastHovered === currentSelected) lastHovered = null; 
+                addOutline(currentSelected, '#e11d48', 'solid'); 
+                
+                if(!currentSelected.id) currentSelected.id = 'build-el-' + Math.random().toString(36).substr(2, 9);
+                
+                const styles = window.getComputedStyle(currentSelected);
+                const rgb2hex = (rgb) => { 
+                    let res = rgb.match(/^rgb(?:a)?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*[\\d.]+)?\\)$/); 
+                    if(!res) return rgb; 
+                    const hex = (x) => ("0" + parseInt(x).toString(16)).slice(-2); 
+                    return "#" + hex(res[1]) + hex(res[2]) + hex(res[3]); 
+                };
+                
+                let textContent = ""; 
+                if(currentSelected.children.length === 0 || (currentSelected.childNodes.length === 1 && currentSelected.childNodes[0].nodeType === 3)) {
+                    textContent = currentSelected.innerText;
+                }
+                
+                window.parent.postMessage({ 
+                    type: 'ELEMENT_SELECTED', 
+                    id: currentSelected.id, 
+                    tagName: currentSelected.tagName, 
+                    text: textContent, 
+                    color: rgb2hex(styles.color), 
+                    bgColor: styles.backgroundColor === 'rgba(0, 0, 0, 0)' ? '#ffffff' : rgb2hex(styles.backgroundColor), 
+                    fontFamily: styles.fontFamily, 
+                    fontSize: styles.fontSize, 
+                    fontWeight: styles.fontWeight, 
+                    padding: styles.padding, 
+                    margin: styles.margin, 
+                    borderRadius: styles.borderRadius 
+                }, '*');
+            }, true);
+
+            window.addEventListener('message', (e) => {
+                if(e.data.type === 'UPDATE_ELEMENT' && currentSelected && e.data.id === currentSelected.id) {
+                    const prop = e.data.property; const val = e.data.value;
+                    if(prop === 'text' && currentSelected.tagName !== 'IMG') currentSelected.innerText = val;
+                    if(prop === 'color') currentSelected.style.setProperty('color', val, 'important');
+                    if(prop === 'bgColor') currentSelected.style.setProperty('background-color', val, 'important');
+                    if(prop === 'fontFamily') currentSelected.style.setProperty('font-family', val, 'important');
+                    if(prop === 'fontSize') currentSelected.style.setProperty('font-size', val, 'important');
+                    if(prop === 'fontWeight') currentSelected.style.setProperty('font-weight', val, 'important');
+                    if(prop === 'padding') currentSelected.style.setProperty('padding', val, 'important');
+                    if(prop === 'margin') currentSelected.style.setProperty('margin', val, 'important');
+                    if(prop === 'borderRadius') currentSelected.style.setProperty('border-radius', val, 'important');
+                    addOutline(currentSelected, '#e11d48', 'solid'); 
+                } else if (e.data.type === 'DESELECT') { 
+                    if(currentSelected) removeOutline(currentSelected); 
+                    currentSelected = null; 
+                }
+            });
+        </script>`;
+
+    // 2. Fungsi untuk menyuntikkan kode ke Iframe
+    const getInjectedHTML = () => {
+        let htmlCode = fileSystem[activeFile]?.content || "";
+        if (!htmlCode) return "";
+
+        let fontLinks = `<link href="https://fonts.googleapis.com/css2?family=Abel&family=Anton&family=Archivo:wght@400;700&family=Asap:wght@400;700&family=Bebas+Neue&family=Cabin:wght@400;700&family=Cairo:wght@400;700&family=Caveat:wght@400;700&family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;700&family=Dosis:wght@400;700&family=Exo+2:wght@400;700&family=Fira+Sans:wght@400;700&family=Fjalla+One&family=Hind:wght@400;700&family=Inconsolata:wght@400;700&family=Indie+Flower&family=Inter:wght@400;700&family=Josefin+Sans:wght@400;700&family=Kanit:wght@400;700&family=Karla:wght@400;700&family=Lato:wght@400;700&family=Lora:wght@400;700&family=Manrope:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Mukta:wght@400;700&family=Noto+Sans:wght@400;700&family=Nunito:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=PT+Sans:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;700&family=Prompt:wght@400;700&family=Quicksand:wght@400;700&family=Raleway:wght@400;700&family=Righteous&family=Roboto:wght@400;700&family=Rubik:wght@400;700&family=Share+Tech&family=Signika:wght@400;700&family=Slabo+27px&family=Source+Sans+3:wght@400;700&family=Space+Grotesk:wght@400;700&family=Teko:wght@400;700&family=Titillium+Web:wght@400;700&family=Ubuntu:wght@400;700&family=Varela+Round&family=Work+Sans:wght@400;700&family=Zilla+Slab:wght@400&display=swap" rel="stylesheet">`;
+        
+        if(fileSystem['style.css'] && !htmlCode.includes('<style>'+fileSystem['style.css'].content)) {
+            if(htmlCode.includes('</head>')) htmlCode = htmlCode.replace('</head>', `<style>${fileSystem['style.css'].content}</style></head>`);
+        }
+        if(!htmlCode.includes('fonts.googleapis.com')) {
+            if(htmlCode.includes('</head>')) htmlCode = htmlCode.replace('</head>', fontLinks + '\n</head>'); 
+            else htmlCode = fontLinks + '\n' + htmlCode;
+        }
+        if(htmlCode.includes('</body>')) { 
+            htmlCode = htmlCode.replace('</body>', inspectorScript + '\n</body>'); 
+        } else { 
+            htmlCode += '\n' + inspectorScript; 
+        }
+        return htmlCode;
+    };
+
+    // 3. Menangkap event Message dari Iframe (Ganti window.addEventListener biasa)
+    useEffect(() => {
+        const handleMessage = (e) => {
+            if (e.data && e.data.type === 'ELEMENT_SELECTED') {
+                setSelectedElementId(e.data.id);
+                setSelectedElementTag(`<${e.data.tagName.toLowerCase()}>`);
+                
+                const colorHex = (e.data.color || "#000000").substring(0, 7);
+                const bgHex = (e.data.bgColor || "#ffffff").substring(0, 7);
+                
+                setElementProps({
+                    text: e.data.text || '',
+                    color: colorHex,
+                    bgColor: bgHex,
+                    fontFamily: e.data.fontFamily ? e.data.fontFamily.split(',')[0].replace(/['"]/g, '') : "Inter",
+                    fontSize: e.data.fontSize || '',
+                    fontWeight: String(e.data.fontWeight) === "normal" ? "400" : String(e.data.fontWeight) === "bold" ? "700" : String(e.data.fontWeight),
+                    padding: e.data.padding || '',
+                    margin: e.data.margin || '',
+                    borderRadius: e.data.borderRadius || ''
+                });
+
+                // Buka semua akordion saat elemen dipilih
+                setInspectorAccordion('all');
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
+    // 4. Fungsi untuk Menerapkan Perubahan Properti ke Iframe
+    const applyPropertyChange = (propType, val) => {
+        if (!selectedElementId || !iframeRef.current || !iframeRef.current.contentWindow) return;
+        
+        // Update state lokal React dulu
+        setElementProps(prev => ({ ...prev, [propType]: val }));
+
+        // Kirim pesan ke Iframe untuk di-render langsung
+        iframeRef.current.contentWindow.postMessage({ 
+            type: 'UPDATE_ELEMENT', 
+            id: selectedElementId, 
+            property: propType, 
+            value: val 
+        }, '*');
+
+        // Sync ke fileSystem (Auto Save)
+        clearTimeout(cardsSyncTimeout.current);
+        cardsSyncTimeout.current = setTimeout(() => {
+            try {
+                let doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document; 
+                if(!doc) return;
+                
+                let htmlStr = "<!DOCTYPE html>\n<html lang=\"id\">\n" + doc.documentElement.innerHTML + "\n</html>";
+                htmlStr = htmlStr.replace(inspectorScript, '').replace(/outline:.*?;/g, '').replace(/outline-offset:.*?;/g, '').replace(/\s*id="build-el-[a-z0-9]+"/g, ''); 
+                
+                if(fileSystem['style.css']) { 
+                    htmlStr = htmlStr.replace(`<style>${fileSystem['style.css'].content}</style>`, ''); 
+                }
+                
+                setFileSystem(prev => ({
+                    ...prev,
+                    ['index.html']: { content: htmlStr }
+                }));
+                
+            } catch(e) { console.error("Iframe Sync Error", e); }
+        }, 500);
+    };
+
+    // 5. Fungsi Deselect
+    const handleDeselectElement = () => {
+        setSelectedElementId(null);
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({ type: 'DESELECT' }, '*');
+        }
+    };
+
     return (
         <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col text-slate-900 bg-slate-100 font-sans">
             <style>{`
@@ -1346,7 +1529,7 @@ export default function App() {
 
                             <div className="flex-1 p-4 lg:overflow-y-auto custom-scroll pb-20 lg:pb-4">
                                 <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-                                    {/* MASUKKAN KODE MAPPING KARTU GENERATOR LAMA ANDA DI SINI */}
+                                    {/* MAPPING KARTU LAMA */}
                                     {cardsState.length === 0 ? (
                                         <div className="col-span-full flex flex-col items-center justify-center text-center w-full h-full min-h-[50vh]">
                                             <div className="w-20 h-20 bg-primary/5 border border-primary/20 text-primary/60 rounded-full flex items-center justify-center mb-4"><SparklesIcon className="w-8 h-8" /></div>
@@ -1435,7 +1618,7 @@ export default function App() {
                                         <div className="flex-1 overflow-auto flex justify-center p-2 relative custom-scroll">
                                             <iframe 
                                                 ref={iframeRef} 
-                                                srcDoc={fileSystem[activeFile]?.content || ""} 
+                                                srcDoc={getInjectedHTML()} 
                                                 className="bg-white shadow-xl h-full border-none rounded-md transition-all duration-300 mx-auto" 
                                                 style={{ width: previewSize }} 
                                                 sandbox="allow-scripts allow-same-origin"
@@ -1468,27 +1651,24 @@ export default function App() {
                                                 </div>
                                                 <div className="flex items-center gap-2 group border border-[#404040] rounded bg-[#252525] px-2 py-0.5">
                                                     <CodeIcon className="w-3.5 h-3.5 text-primary" />
-                                                    <input type="text" value={activeFile} onChange={(e) => {/* Logika Rename File Nanti */}} className="bg-transparent text-slate-200 text-xs font-mono w-32 outline-none border-b border-transparent focus:border-primary transition" title="Klik untuk mengubah nama" />
+                                                    <input type="text" value={activeFile} readOnly className="bg-transparent text-slate-200 text-xs font-mono w-32 outline-none border-b border-transparent focus:border-primary transition" title="Nama File (Read Only)" />
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => { /* Logika Hapus Konten */ }} className="p-1.5 text-slate-300 bg-[#404040] border border-[#505050] rounded hover:text-red-400 hover:bg-red-900/40 hover:border-red-800 transition shadow-sm" title="Hapus Konten File Ini">
+                                                <button onClick={() => { setFileSystem(prev => ({...prev, [activeFile]: {content: ''}})) }} className="p-1.5 text-slate-300 bg-[#404040] border border-[#505050] rounded hover:text-red-400 hover:bg-red-900/40 hover:border-red-800 transition shadow-sm" title="Hapus Konten File Ini">
                                                     <TrashIcon className="w-3.5 h-3.5" />
                                                 </button>
                                                 <div className="w-px h-4 bg-[#505050] mx-0.5"></div>
                                                 <input type="file" ref={fileUploadRef} accept=".html,.txt,.css,.js,.zip" className="hidden" onChange={(e) => {/* Logika Upload Nanti */}} />
                                                 <button onClick={() => fileUploadRef.current?.click()} className="px-2.5 py-1.5 bg-[#404040] border border-[#505050] rounded text-[10px] font-bold text-slate-200 hover:text-slate-900 hover:bg-primary hover:border-primary flex items-center gap-1.5 transition shadow-sm">
-                                                    <UploadIcon className="w-3 h-3" /> UPLOAD HTML/ZIP
+                                                    <UploadIcon className="w-3 h-3" /> UPLOAD HTML
                                                 </button>
                                             </div>
                                         </div>
                                         <div className="flex-1 relative bg-[#1e1e1e]">
                                             <textarea 
                                                 value={fileSystem[activeFile]?.content || ""} 
-                                                onChange={(e) => { 
-                                                    // Menyimpan ketikan ke fileSystem (Sementara)
-                                                    setFileSystem(prev => ({ ...prev, [activeFile]: { content: e.target.value } })); 
-                                                }}
+                                                onChange={(e) => setFileSystem(prev => ({ ...prev, [activeFile]: { content: e.target.value } }))}
                                                 spellCheck="false" 
                                                 placeholder="Ketik atau paste kode Anda di sini..." 
                                                 className="absolute inset-0 w-full h-full bg-transparent text-[#d4d4d4] font-mono text-[11px] p-4 outline-none resize-none custom-scroll leading-relaxed"
@@ -1499,6 +1679,104 @@ export default function App() {
                             </div>
                         </div>
                     )}
+                </section>
+
+                {/* ============================================================== */}
+                {/* BAGIAN KANAN: INSPECTOR & HISTORY (HANYA MUNCUL DI MODE EDITOR)*/}
+                {/* ============================================================== */}
+                {sidebarTab === 'editor' && (
+                    <aside className="w-full lg:w-[30%] bg-white lg:border-l border-slate-200 flex flex-col shrink-0 lg:h-full relative z-20 shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)]">
+                        
+                        <div className="h-14 border-b border-slate-200 bg-slate-50 flex items-center px-4 shrink-0 justify-between">
+                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <EditIcon className="w-3.5 h-3.5" /> Editor
+                            </h2>
+                            <div className="flex items-center gap-1.5 relative">
+                                <button className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm opacity-30 cursor-not-allowed" title="Undo"><UndoIcon className="w-3.5 h-3.5" /></button>
+                                <button className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm opacity-30 cursor-not-allowed" title="Redo"><RedoIcon className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setShowHistoryMenu(!showHistoryMenu)} className="w-7 h-7 rounded bg-white border border-slate-200 text-primary flex items-center justify-center hover:bg-slate-100 transition shadow-sm" title="History"><ClockIcon className="w-3.5 h-3.5" /></button>
+                                
+                                {showHistoryMenu && (
+                                    <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-[300px] flex flex-col overflow-hidden">
+                                        <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 flex justify-between items-center tracking-wider uppercase">
+                                            <span>Riwayat Versi</span><span className="bg-primary/20 text-primaryDark px-1.5 py-0.5 rounded">{codeHistory.length}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Area Inspector Dinamis */}
+                        <div className="flex-1 overflow-y-auto custom-scroll p-4 relative">
+                            {/* Empty State */}
+                            <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-white z-10 transition-opacity ${selectedElementId ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                                <div className="w-16 h-16 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center mb-4">
+                                    <CursorSelectIcon className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-sm font-bold text-slate-700 mb-2 tracking-wide uppercase">Pilih Elemen di Preview</h3>
+                                <p className="text-[11px] text-slate-500 max-w-[200px] leading-relaxed">Klik teks, tombol, atau kotak di layar tengah untuk mengedit desainnya.</p>
+                            </div>
+
+                            {/* Form Inspector */}
+                            <div className={`flex flex-col gap-4 transition-opacity ${selectedElementId ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-bold tracking-wider font-mono bg-primary/20 text-primaryDark px-2 py-0.5 rounded shadow-sm">{selectedElementTag}</span>
+                                    <button onClick={handleDeselectElement} className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition border border-transparent hover:border-red-200 rounded px-2 py-0.5">Tutup X</button>
+                                </div>
+
+                                {/* Bagian Konten Teks */}
+                                <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><FileTextIcon className="w-3 h-3" /> Konten Teks</label>
+                                    <textarea value={elementProps.text} onChange={(e) => applyPropertyChange('text', e.target.value)} rows="3" className="w-full text-xs p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none custom-scroll bg-slate-50 transition" />
+                                </div>
+
+                                {/* Bagian Warna */}
+                                <div className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><PaletteIcon className="w-3 h-3" /> Palet Warna</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Teks (Color)</span>
+                                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded p-1 focus-within:border-primary transition">
+                                                <input type="color" value={elementProps.color} onChange={(e) => applyPropertyChange('color', e.target.value)} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
+                                                <input type="text" value={elementProps.color} onChange={(e) => applyPropertyChange('color', e.target.value)} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Latar (Background)</span>
+                                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded p-1 focus-within:border-primary transition">
+                                                <input type="color" value={elementProps.bgColor} onChange={(e) => applyPropertyChange('bgColor', e.target.value)} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
+                                                <input type="text" value={elementProps.bgColor} onChange={(e) => applyPropertyChange('bgColor', e.target.value)} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bagian Layout */}
+                                <div className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><LayoutBoxIcon className="w-3 h-3" /> Tata Letak & Bingkai</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Padding</span><input type="text" value={elementProps.padding} onChange={(e) => applyPropertyChange('padding', e.target.value)} placeholder="mis: 16px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Margin</span><input type="text" value={elementProps.margin} onChange={(e) => applyPropertyChange('margin', e.target.value)} placeholder="mis: 0 auto" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Radius</span><input type="text" value={elementProps.borderRadius} onChange={(e) => applyPropertyChange('borderRadius', e.target.value)} placeholder="mis: 8px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Download Panel */}
+                        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2 shrink-0">
+                            <p className="text-[10px] text-center font-bold text-slate-500 mb-1 tracking-widest uppercase">EKSPOR PROJECT</p>
+                            <div className="flex gap-2">
+                                <button className="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
+                                    <FileTextIcon className="w-3.5 h-3.5" /> HTML
+                                </button>
+                                <button className="flex-1 bg-primary text-slate-900 hover:bg-primaryDark font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
+                                    <DownloadIcon className="w-3.5 h-3.5" /> ZIP
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+                )}
                 </section>
 
                 {/* ============================================================== */}
