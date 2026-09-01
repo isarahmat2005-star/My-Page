@@ -793,6 +793,38 @@ export default function App() {
 
     const inputClass = "w-full text-xs p-2 border border-gray-300 rounded bg-slate-50 focus:ring-2 focus:ring-primary outline-none transition-all";
 
+    // 3. Menangkap event Message dari Iframe (dipindah ke sini, SEBELUM early return,
+    //    agar jumlah/urutan hook selalu sama di setiap render — lihat Rules of Hooks)
+    useEffect(() => {
+        const handleMessage = (e) => {
+            if (e.data && e.data.type === 'ELEMENT_SELECTED') {
+                setSelectedElementId(e.data.id);
+                setSelectedElementTag(`<${e.data.tagName.toLowerCase()}>`);
+                
+                const colorHex = (e.data.color || "#000000").substring(0, 7);
+                const bgHex = (e.data.bgColor || "#ffffff").substring(0, 7);
+                
+                setElementProps({
+                    text: e.data.text || '',
+                    color: colorHex,
+                    bgColor: bgHex,
+                    fontFamily: e.data.fontFamily ? e.data.fontFamily.split(',')[0].replace(/['"]/g, '') : "Inter",
+                    fontSize: e.data.fontSize || '',
+                    fontWeight: String(e.data.fontWeight) === "normal" ? "400" : String(e.data.fontWeight) === "bold" ? "700" : String(e.data.fontWeight),
+                    padding: e.data.padding || '',
+                    margin: e.data.margin || '',
+                    borderRadius: e.data.borderRadius || ''
+                });
+
+                // Buka semua akordion saat elemen dipilih
+                setInspectorAccordion('all');
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
     // --- GATE LOGIN: kalau belum login, tampilkan layar ini saja ---
     if (!isAuthenticated) {
         return (
@@ -931,37 +963,6 @@ export default function App() {
         }
         return htmlCode;
     };
-
-    // 3. Menangkap event Message dari Iframe (Ganti window.addEventListener biasa)
-    useEffect(() => {
-        const handleMessage = (e) => {
-            if (e.data && e.data.type === 'ELEMENT_SELECTED') {
-                setSelectedElementId(e.data.id);
-                setSelectedElementTag(`<${e.data.tagName.toLowerCase()}>`);
-                
-                const colorHex = (e.data.color || "#000000").substring(0, 7);
-                const bgHex = (e.data.bgColor || "#ffffff").substring(0, 7);
-                
-                setElementProps({
-                    text: e.data.text || '',
-                    color: colorHex,
-                    bgColor: bgHex,
-                    fontFamily: e.data.fontFamily ? e.data.fontFamily.split(',')[0].replace(/['"]/g, '') : "Inter",
-                    fontSize: e.data.fontSize || '',
-                    fontWeight: String(e.data.fontWeight) === "normal" ? "400" : String(e.data.fontWeight) === "bold" ? "700" : String(e.data.fontWeight),
-                    padding: e.data.padding || '',
-                    margin: e.data.margin || '',
-                    borderRadius: e.data.borderRadius || ''
-                });
-
-                // Buka semua akordion saat elemen dipilih
-                setInspectorAccordion('all');
-            }
-        };
-
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, []);
 
     // 4. Fungsi untuk Menerapkan Perubahan Properti ke Iframe
     const applyPropertyChange = (propType, val) => {
