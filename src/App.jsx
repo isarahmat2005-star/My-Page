@@ -299,6 +299,34 @@ export default function App() {
         setIsEditorSending(false);
         setEditorChat(prev => [...prev, { role: 'ai', text: '<i>Terhenti.</i>' }]);
     };
+
+    // --- STATE STORAGE ---
+    const [storageCards, setStorageCards] = useState([]);
+    const [storageZipName, setStorageZipName] = useState('');
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        (async () => {
+            try {
+                const db = await initMetaDB();
+                const tx = db.transaction(META_STORE_NAME, 'readonly');
+                const req = tx.objectStore(META_STORE_NAME).get('storage_cards');
+                req.onsuccess = () => { if (req.result && req.result.value) setStorageCards(req.result.value); };
+            } catch (e) { console.error('Gagal memuat Storage:', e); }
+        })();
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const timer = setTimeout(async () => {
+            try {
+                const db = await initMetaDB();
+                const tx = db.transaction(META_STORE_NAME, 'readwrite');
+                tx.objectStore(META_STORE_NAME).put({ key: 'storage_cards', value: storageCards });
+            } catch (e) { console.error('Gagal simpan Storage:', e); }
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [storageCards, isAuthenticated]);
     
     // --- State Inspector Kanan ---
     const [selectedElementId, setSelectedElementId] = useState(null);
@@ -774,6 +802,7 @@ export default function App() {
             if (response.ok && data.url) {
                // Simpan blobUrl ke dalam state kartu yang bersangkutan
                 setCardsState(prev => prev.map(c => c.id === card.id ? { ...c, blobUrl: data.blobUrl } : c));
+                setStorageCards(prev => prev.map(c => c.id === card.id ? { ...c, blobUrl: data.blobUrl } : c));
                 window.open(data.url, '_blank');
                 showToast("Berhasil di-publish!", "success");
             } else {
@@ -1541,15 +1570,21 @@ export default function App() {
                                 <div className="flex bg-slate-50 p-1.5 gap-1">
                                     <button 
                                         onClick={() => setSidebarTab('frontend')} 
-                                        className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'frontend' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
+                                        className={`flex-1 flex items-center justify-center text-[10px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'frontend' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
                                     >
-                                        <SparklesIcon className="w-3.5 h-3.5" /> Generator
+                                        GENERATOR
                                     </button>
                                     <button 
                                         onClick={() => setSidebarTab('editor')} 
-                                        className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
+                                        className={`flex-1 flex items-center justify-center text-[10px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'editor' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
                                     >
-                                        <CodeIcon className="w-3.5 h-3.5" /> Editor IDE
+                                        EDITOR
+                                    </button>
+                                    <button 
+                                        onClick={() => setSidebarTab('storage')} 
+                                        className={`flex-1 flex items-center justify-center text-[10px] font-bold py-1.5 rounded-md transition-all uppercase tracking-wider ${sidebarTab === 'storage' ? 'bg-white shadow-sm text-primaryDark border border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'}`}
+                                    >
+                                        STORAGE
                                     </button>
                                 </div>
                             </div>
@@ -1854,6 +1889,57 @@ export default function App() {
                             </div>
                         )}
 
+                        {/* KONTEN TAB: STORAGE (Menu Kiri) */}
+                        {sidebarTab === 'storage' && (
+                            <div className="p-3 lg:p-4 pt-1 pb-6 flex-1 flex flex-col gap-4">
+                                <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
+                                    <div className="mb-3">
+                                        <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Upload File HTML Ke Storage</label>
+                                        <input type="file" multiple accept=".html" onChange={(e) => {
+                                            const files = Array.from(e.target.files);
+                                            files.forEach(file => {
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => {
+                                                    const newCard = { id: 'store_' + Date.now() + Math.random().toString(36).substr(2, 5), title: file.name.replace('.html', ''), prompt: '', code: ev.target.result, status: 'done', error: null, blobUrl: null };
+                                                    setStorageCards(prev => [newCard, ...prev]);
+                                                };
+                                                reader.readAsText(file);
+                                            });
+                                            e.target.value = '';
+                                        }} className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded bg-slate-50 outline-none transition-all cursor-pointer" />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Nama Ekspor ZIP (.html)</label>
+                                        <input type="text" placeholder="Nama File ZIP Storage" value={storageZipName} onChange={e => setStorageZipName(e.target.value)} className="w-full text-[11px] py-1.5 px-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" />
+                                    </div>
+                                    <div className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-200 mb-3">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total File Tersimpan:</span>
+                                        <span className="text-xs font-black text-primaryDark">{storageCards.length} File</span>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <button onClick={async () => {
+                                            if (storageCards.length === 0) return;
+                                            setIsZipping(true);
+                                            try { await downloadZipFiles(storageCards, storageZipName || 'Storage-Files'); }
+                                            catch (err) { setAlertData({ title: "Error ZIP", desc: err.message }); }
+                                            finally { setIsZipping(false); }
+                                        }} disabled={storageCards.length === 0 || isZipping} className="w-full bg-green-600 text-white font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-green-700 transition disabled:opacity-50">
+                                            {isZipping ? <CustomSpinner className="w-3.5 h-3.5 text-white" /> : <DownloadIcon className="w-3.5 h-3.5" />} EKSPOR ZIP
+                                        </button>
+                                        <button onClick={() => {
+                                            setConfirmData({
+                                                title: "Clear All Storage?",
+                                                desc: "Semua file di Storage akan dihapus permanen. URL Vercel yang terhubung akan tetap aktif di cloud.",
+                                                action: () => setStorageCards([])
+                                            });
+                                        }} disabled={storageCards.length === 0} className="w-full bg-red-50 text-red-600 border border-red-200 font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-red-100 transition disabled:opacity-50">
+                                            <TrashIcon className="w-3.5 h-3.5" /> CLEAR ALL
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
 
                     {/* ========================================= */}
@@ -2155,6 +2241,48 @@ export default function App() {
                             </div>
                         </div>
                     )}
+
+                    {/* --- MODE 3: STORAGE (KARTU DI TENGAH) --- */}
+                    {sidebarTab === 'storage' && (
+                        <div className="flex-1 p-4 lg:overflow-y-auto custom-scroll pb-20 lg:pb-4 bg-slate-100">
+                            <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                                {storageCards.length === 0 ? (
+                                    <div className="col-span-full flex flex-col items-center justify-center text-center w-full h-full min-h-[50vh]">
+                                        <div className="w-20 h-20 bg-primary/5 border border-primary/20 text-primary/60 rounded-full flex items-center justify-center mb-4"><UploadIcon className="w-8 h-8" /></div>
+                                        <h3 className="text-xl font-bold text-slate-700 mb-2">Storage Kosong</h3>
+                                        <p className="text-slate-500 text-sm max-w-md">Upload file HTML di panel kiri untuk menyimpan kodenya dan mengelola URL Vercel kapan saja.</p>
+                                    </div>
+                                ) : (
+                                    storageCards.map(card => (
+                                        <div key={card.id} className="bg-white hover:shadow-md rounded-lg shadow-sm border border-slate-200 flex flex-col transition-all duration-300">
+                                            <div className="grid grid-cols-4 gap-1.5 p-2 bg-primary/5 border-b border-primary/10 rounded-t-lg shrink-0">
+                                                <button onClick={() => { setPreviewCard(card); setPreviewDevice('desktop'); }} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-primary hover:bg-primary/10 transition-colors"><EyeIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">PREV</span></button>
+                                                <button onClick={() => { copyToClipboard(card.code); setAlertData({title:"Sukses!", desc:"Kode HTML disalin ke Clipboard."}) }} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-slate-600 hover:bg-slate-50 transition-colors"><CopyIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">COPY</span></button>
+                                                <button onClick={() => handleOpenEdit(card)} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-amber-50 border-amber-200 text-amber-600 hover:brightness-95 transition-colors"><EditIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">EDIT</span></button>
+                                                <button onClick={() => setConfirmData({title:"Hapus File Storage?", desc:"File akan dihapus dari Storage lokal Anda.", action: () => setStorageCards(prev => prev.filter(c => c.id !== card.id)) })} className="flex flex-row items-center justify-center gap-1.5 py-1.5 rounded border bg-white border-primary/20 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors"><TrashIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase tracking-tight truncate">DEL</span></button>
+                                            </div>
+                                            <div className="p-2 border-b border-slate-100 flex justify-between items-center gap-2 shrink-0 bg-white">
+                                                <p className="text-[11px] font-bold text-slate-800 truncate">{card.title}</p>
+                                                <span className="text-[8px] font-black tracking-widest px-1.5 py-0.5 rounded border whitespace-nowrap bg-emerald-50 text-emerald-700 border-emerald-200">STORED</span>
+                                            </div>
+                                            <div className="p-2 flex gap-2 h-[150px] bg-white rounded-b-lg relative">
+                                                <div className="flex-1 rounded-lg overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-200 cursor-pointer group" onClick={() => setPreviewCard(card)}>
+                                                    <div className="absolute inset-0 w-full h-full bg-transparent"><iframe srcDoc={card.code} className="absolute inset-0 w-full h-full border-none pointer-events-none scale-[0.35] origin-top-left" style={{width: '285%', height: '285%'}} scrolling="no" /></div>
+                                                    <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/40 transition-all flex items-center justify-center"><PlayIcon className="text-white w-8 h-8 drop-shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all" /></div>
+                                                </div>
+                                                <div className="flex-1 border border-slate-200 rounded-lg bg-slate-50 flex flex-col overflow-hidden">
+                                                    <div className="p-1 border-b border-slate-200 bg-slate-100 sticky top-0 shrink-0"><span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block text-center">HTML Code</span></div>
+                                                    <div className="p-1.5 overflow-y-auto custom-scroll flex-1 bg-white">
+                                                        <pre className="text-[7px] text-slate-700 font-mono leading-tight whitespace-pre-wrap break-words"><code>{card.code || ''}</code></pre>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {/* ============================================================== */}
@@ -2357,7 +2485,11 @@ export default function App() {
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setEditCardId(null)} className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 transition shadow-md">Batal</button>
-                                <button onClick={() => { setCardsState(prev => prev.map(c => c.id === editCardId ? {...c, code: editCodeArea} : c)); setEditCardId(null); }} className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-900 bg-primary hover:bg-primaryDark shadow-md transition">Simpan</button>
+                                <button onClick={() => { 
+                                    setCardsState(prev => prev.map(c => c.id === editCardId ? {...c, code: editCodeArea} : c)); 
+                                    setStorageCards(prev => prev.map(c => c.id === editCardId ? {...c, code: editCodeArea} : c));
+                                    setEditCardId(null); 
+                                }} className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-900 bg-primary hover:bg-primaryDark shadow-md transition">Simpan</button>
                             </div>
                         </div>
                         <div className="bg-white shadow-2xl flex flex-col rounded-xl overflow-hidden w-full h-full relative">
