@@ -2438,7 +2438,7 @@ export default function App() {
                             )}
 
                             {editorConfigMode === 'font' && (
-                                <div className="flex flex-col gap-3 min-h-[300px]">
+                                <div className="flex flex-col gap-3 min-h-[290px]">
                                     <div className="relative w-full">
                                         <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Jenis Font (40+ Google Fonts)</span>
                                         <button onClick={() => setShowEditorConfigFontDropdown(!showEditorConfigFontDropdown)} className="w-full flex justify-between items-center bg-white border border-slate-300 rounded p-2 hover:bg-slate-50 transition shadow-sm text-left outline-none">
