@@ -1540,7 +1540,7 @@ export default function App() {
                     <div className="flex-1 overflow-y-scroll overflow-x-hidden custom-scroll flex flex-col bg-slate-50">
                         
                         {/* --- BAGIAN ATAS (KINI IKUT SCROLL) --- */}
-                        <div className="p-3 lg:p-4 pb-0 shrink-0 flex flex-col gap-3">
+                        <div className="p-3 lg:p-4 pb-2 shrink-0 flex flex-col gap-3">
                             {/* PANEL USER AKTIF & TOMBOL TAB MENYATU (SATU KESATUAN) */}
                             <div className="bg-white border border-primary/30 rounded-lg shadow-sm flex flex-col overflow-hidden">
                                 {/* Baris Atas: Info Email & Tombol Aksi */}
@@ -1592,7 +1592,7 @@ export default function App() {
 
                         {/* KONTEN TAB: FRONT END (GENERATOR) */}
                         {sidebarTab === 'frontend' && (
-                            <div className="p-3 lg:p-4 pt-0 pb-6">
+                            <div className="p-3 lg:p-4 pt-1 pb-6">
                                 <div className="bg-white p-3 rounded-lg shadow-sm border border-primary/30 flex flex-col text-left">
                                     <div className="mb-3">
                                         <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Deskripsi Produk/Halaman <span className="text-red-500">*</span></label>
@@ -1844,7 +1844,7 @@ export default function App() {
 
                         {/* KONTEN TAB: EDITOR IDE (CHAT AI) */}
                         {sidebarTab === 'editor' && (
-                            <div className="flex-1 flex flex-col min-h-0 bg-slate-50 relative px-3 lg:px-4 pb-2 pt-0">
+                            <div className="flex-1 flex flex-col min-h-0 bg-slate-50 relative px-3 lg:px-4 py-2">
                                 {/* Header Info Chat */}
                                 <div className="p-3 border-b border-slate-200 bg-white rounded-t-lg shadow-sm shrink-0 flex justify-between items-center z-10">
                                     <h2 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
