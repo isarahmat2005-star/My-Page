@@ -143,6 +143,26 @@ const clearCardsFromDB = async () => {
     }
 };
 
+// --- HELPER CRUD: EDITOR IDE (fileSystem + activeFile, disimpan sebagai 1 blob JSON) ---
+const saveEditorStateToDB = async (fileSystem, activeFile) => {
+    try {
+        const db = await initMetaDB();
+        const tx = db.transaction(META_STORE_NAME, 'readwrite');
+        tx.objectStore(META_STORE_NAME).put({ key: 'editor_state', value: { fileSystem, activeFile } });
+    } catch (err) { console.error('Gagal simpan state Editor IDE ke IndexedDB:', err); }
+};
+const loadEditorStateFromDB = () => {
+    return new Promise(async (resolve) => {
+        try {
+            const db = await initMetaDB();
+            const tx = db.transaction(META_STORE_NAME, 'readonly');
+            const req = tx.objectStore(META_STORE_NAME).get('editor_state');
+            req.onsuccess = () => resolve(req.result ? req.result.value : null);
+            req.onerror = () => resolve(null);
+        } catch (err) { resolve(null); }
+    });
+};
+
 const deleteBlobFromServer = async (blobUrl) => {
     if (!blobUrl) return;
     try {
@@ -264,6 +284,15 @@ export default function App() {
     const [codeHistory, setCodeHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [showHistoryMenu, setShowHistoryMenu] = useState(false);
+    const [isEditorSending, setIsEditorSending] = useState(false);
+    const [isEditorPublishing, setIsEditorPublishing] = useState(false);
+    const [editorConfigMode, setEditorConfigMode] = useState(null); // null | 'color' | 'font'
+    const [editorConfigColorRows, setEditorConfigColorRows] = useState([{ hex: '#C8D100', label: '' }]);
+    const [editorConfigFont, setEditorConfigFont] = useState('');
+    const [showEditorConfigFontDropdown, setShowEditorConfigFontDropdown] = useState(false);
+    const editorSyncTimeout = useRef(null);
+    const editorHistorySyncTimeout = useRef(null);
+    const editorPropSyncTimeout = useRef(null);
     
     // --- State Inspector Kanan ---
     const [selectedElementId, setSelectedElementId] = useState(null);
@@ -307,6 +336,32 @@ export default function App() {
             setCardsState(cleaned);
         }
     };
+
+    // --- MUAT STATE EDITOR IDE (fileSystem + activeFile) DARI INDEXEDDB SAAT LOGIN ---
+    // (Hook ini WAJIB ada sebelum early return login-gate, lihat Rules of Hooks di bawah)
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        (async () => {
+            const saved = await loadEditorStateFromDB();
+            if (saved && saved.fileSystem && Object.keys(saved.fileSystem).length > 0) {
+                setFileSystem(saved.fileSystem);
+                const restoredActive = saved.activeFile && saved.fileSystem[saved.activeFile] ? saved.activeFile : Object.keys(saved.fileSystem)[0];
+                setActiveFile(restoredActive);
+                setCodeHistory([{ time: new Date().toLocaleTimeString('id-ID', { hour12: false }), state: JSON.stringify(saved.fileSystem), origin: 'Muat Tersimpan', activeFile: restoredActive }]);
+                setHistoryIndex(0);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated]);
+
+    // --- AUTO-SIMPAN fileSystem + activeFile EDITOR IDE KE INDEXEDDB (debounce 800ms) ---
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        clearTimeout(editorSyncTimeout.current);
+        editorSyncTimeout.current = setTimeout(() => {
+            saveEditorStateToDB(fileSystem, activeFile);
+        }, 800);
+    }, [fileSystem, activeFile, isAuthenticated]);
 
     // --- INIT AUTH & DEVICE ID (dijalankan sekali saat app dibuka) ---
     useEffect(() => {
@@ -964,6 +1019,370 @@ export default function App() {
         return htmlCode;
     };
 
+    // =====================================================================
+    // === EDITOR IDE: SISTEM RIWAYAT (HISTORY / UNDO / REDO) ===
+    // =====================================================================
+    // Menyimpan snapshot fileSystem saat ini ke riwayat versi. Dipanggil setiap
+    // ada perubahan kode "berarti" (bukan tiap ketukan huruf): setelah AI merespon,
+    // upload file, rename, hapus konten, ketik manual (di-debounce), dan perubahan
+    // lewat visual inspector (di-debounce).
+    const saveEditorHistory = (origin = 'Manual', fsOverride = null, activeOverride = null) => {
+        const fsSnapshot = fsOverride || fileSystem;
+        const activeSnapshot = activeOverride || activeFile;
+        const timeStr = new Date().toLocaleTimeString('id-ID', { hour12: false });
+        const snapshot = JSON.stringify(fsSnapshot);
+
+        setCodeHistory(prevHistory => {
+            // Jangan simpan duplikat persis sama dengan versi yang sedang aktif
+            if (historyIndex >= 0 && prevHistory[historyIndex] && prevHistory[historyIndex].state === snapshot) {
+                return prevHistory;
+            }
+            const trimmed = historyIndex < prevHistory.length - 1 ? prevHistory.slice(0, historyIndex + 1) : prevHistory;
+            const newEntry = { time: timeStr, state: snapshot, origin, activeFile: activeSnapshot };
+            const newHistory = [...trimmed, newEntry];
+            setHistoryIndex(newHistory.length - 1);
+            return newHistory;
+        });
+    };
+
+    const restoreEditorHistoryState = (historyItem) => {
+        try {
+            const restoredFs = JSON.parse(historyItem.state);
+            let restoredActive = historyItem.activeFile || 'index.html';
+            if (!restoredFs[restoredActive]) restoredActive = Object.keys(restoredFs)[0] || 'index.html';
+            if (!restoredFs[restoredActive]) restoredFs[restoredActive] = { content: '' };
+            setFileSystem(restoredFs);
+            setActiveFile(restoredActive);
+        } catch (e) {
+            console.error('Gagal restore riwayat Editor IDE:', e);
+        }
+    };
+
+    const undoEditorCode = () => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            restoreEditorHistoryState(codeHistory[newIndex]);
+        }
+    };
+
+    const redoEditorCode = () => {
+        if (historyIndex < codeHistory.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            restoreEditorHistoryState(codeHistory[newIndex]);
+        }
+    };
+
+    const restoreEditorHistoryByIndex = (idx) => {
+        if (!codeHistory[idx]) return;
+        setHistoryIndex(idx);
+        restoreEditorHistoryState(codeHistory[idx]);
+        setShowHistoryMenu(false);
+    };
+
+    // Textarea kode: update fileSystem langsung tiap ketukan, tapi catat ke riwayat
+    // dengan debounce 1500ms supaya riwayat tidak penuh sampah tiap 1 huruf.
+    const handleEditorCodeInput = (val) => {
+        const nextFs = { ...fileSystem, [activeFile]: { content: val } };
+        setFileSystem(nextFs);
+        clearTimeout(editorHistorySyncTimeout.current);
+        editorHistorySyncTimeout.current = setTimeout(() => {
+            saveEditorHistory('Ketik Manual', nextFs, activeFile);
+        }, 1500);
+    };
+
+    // =====================================================================
+    // === EDITOR IDE: FILE EXPLORER (Rename / Hapus Konten / Upload) ===
+    // =====================================================================
+    const handleRenameActiveFile = (newNameRaw) => {
+        const cleanName = (newNameRaw || '').trim();
+        if (!cleanName || cleanName === activeFile) return;
+        if (fileSystem[cleanName]) {
+            showToast(`File "${cleanName}" sudah ada`, 'error');
+            return;
+        }
+        const next = { ...fileSystem };
+        next[cleanName] = next[activeFile];
+        delete next[activeFile];
+        setFileSystem(next);
+        setActiveFile(cleanName);
+        saveEditorHistory('Rename File', next, cleanName);
+    };
+
+    const handleRequestDeleteActiveFileContent = () => {
+        setConfirmData({
+            title: 'Hapus Konten?',
+            desc: `Anda yakin ingin mengosongkan file <b>${activeFile}</b>?`,
+            action: () => {
+                const next = { ...fileSystem, [activeFile]: { content: '' } };
+                setFileSystem(next);
+                saveEditorHistory('Hapus Konten', next);
+            }
+        });
+    };
+
+    const handleEditorCodeUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) { return; }
+        if (file.name.endsWith('.zip')) {
+            try {
+                let JSZipLib;
+                try { JSZipLib = (await import('jszip')).default; } catch (impErr) { JSZipLib = window.JSZip; }
+                if (!JSZipLib) throw new Error('Modul JSZip tidak tersedia.');
+                const zip = await JSZipLib.loadAsync(file);
+                const newFiles = {};
+                let extCount = 0;
+                for (const [filename, zipEntry] of Object.entries(zip.files)) {
+                    if (!zipEntry.dir) {
+                        const content = await zipEntry.async('string');
+                        newFiles[filename] = { content };
+                        extCount++;
+                    }
+                }
+                const next = { ...fileSystem, ...newFiles };
+                const nextActive = next['index.html'] ? 'index.html' : Object.keys(newFiles)[0];
+                setFileSystem(next);
+                setActiveFile(nextActive);
+                setWorkspaceTab('preview');
+                saveEditorHistory('Upload ZIP', next, nextActive);
+                showToast(`Berhasil mengekstrak ${extCount} file ke Workspace`, 'success');
+            } catch (err) {
+                setAlertData({ title: 'ZIP Error', desc: 'Gagal membaca ZIP: ' + err.message });
+            }
+        } else {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const content = ev.target.result;
+                const next = { ...fileSystem, [file.name]: { content } };
+                setFileSystem(next);
+                setActiveFile(file.name);
+                if (file.name.endsWith('.html')) setWorkspaceTab('preview');
+                saveEditorHistory(`Upload ${file.name}`, next, file.name);
+            };
+            reader.readAsText(file);
+        }
+        e.target.value = '';
+    };
+
+    // =====================================================================
+    // === EDITOR IDE: EKSPOR (DOWNLOAD HTML / ZIP) ===
+    // =====================================================================
+    const handleDownloadEditorHTML = () => {
+        const htmlStr = fileSystem[activeFile]?.content || '';
+        if (!htmlStr) { showToast('File aktif masih kosong', 'error'); return; }
+        const blob = new Blob([htmlStr], { type: 'text/html' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = activeFile;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    };
+
+    const handleDownloadEditorZip = async () => {
+        const fileKeys = Object.keys(fileSystem);
+        if (fileKeys.length === 0) { return; }
+        setIsZipping(true);
+        try {
+            let JSZipLib;
+            try { JSZipLib = (await import('jszip')).default; } catch (impErr) { JSZipLib = window.JSZip; }
+            if (!JSZipLib) throw new Error('Modul JSZip tidak tersedia.');
+            const zip = new JSZipLib();
+            fileKeys.forEach(name => zip.file(name, fileSystem[name].content));
+            const content = await zip.generateAsync({ type: 'blob' });
+            const zipUrl = URL.createObjectURL(content);
+            const link = document.createElement('a');
+            link.href = zipUrl;
+            link.download = 'Web-Project.zip';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(zipUrl);
+        } catch (err) {
+            setAlertData({ title: 'Error ZIP', desc: 'Gagal menyusun ZIP: ' + err.message });
+        } finally {
+            setIsZipping(false);
+        }
+    };
+
+    // =====================================================================
+    // === EDITOR IDE: PUBLISH (endpoint sama dengan handlePublishToVercel) ===
+    // =====================================================================
+    const handlePublishEditorToVercel = async () => {
+        let htmlStr = fileSystem['index.html'] ? fileSystem['index.html'].content : (fileSystem[activeFile] ? fileSystem[activeFile].content : '');
+        if (!htmlStr) { showToast('Tidak ada kode untuk di-publish', 'error'); return; }
+        if (fileSystem['style.css'] && htmlStr.includes('</head>')) {
+            htmlStr = htmlStr.replace('</head>', `<style>${fileSystem['style.css'].content}</style></head>`);
+        }
+        if (fileSystem['script.js'] && htmlStr.includes('</body>')) {
+            htmlStr = htmlStr.replace('</body>', `<script>${fileSystem['script.js'].content}<\/script></body>`);
+        }
+        setIsEditorPublishing(true);
+        try {
+            const response = await fetch('/api/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    html: htmlStr,
+                    id: 'editor_' + Date.now(),
+                    title: activeFile
+                })
+            });
+            const data = await response.json();
+            if (response.ok && data.url) {
+                window.open(data.url, '_blank');
+                showToast('Berhasil di-publish!', 'success');
+            } else {
+                throw new Error(data.error || 'Gagal publish');
+            }
+        } catch (err) {
+            setAlertData({ title: 'Error Publish', desc: err.message });
+        } finally {
+            setIsEditorPublishing(false);
+        }
+    };
+
+    // =====================================================================
+    // === EDITOR IDE: CHAT AI (attach chip, kirim prompt, clear chat) ===
+    // =====================================================================
+    const handleEditorAttachChip = (type, display, payload = null) => {
+        setEditorAttachments(prev => [...prev, { id: Date.now() + Math.random(), type, display, payload }]);
+        setShowEditorActionMenu(false);
+    };
+
+    const handleEditorClearChat = () => {
+        setConfirmData({
+            title: 'Bersihkan Chat?',
+            desc: 'Hanya riwayat chat dengan AI yang akan dihapus. (Kode aman).',
+            action: () => {
+                setEditorChat([{ role: 'ai', text: 'Chat dibersihkan. Silakan instruksikan kembali.' }]);
+            }
+        });
+    };
+
+    const handleEditorSendPrompt = async () => {
+        const userText = editorPrompt.trim();
+        if (!userText && editorAttachments.length === 0) return;
+
+        let displayHtml = userText;
+        if (editorAttachments.length > 0) {
+            const attachmentHtml = editorAttachments.map(a => `<span class="bg-primary/20 text-primaryDark px-1.5 rounded inline-block text-[10px] border border-primary/30 mr-1">[${a.display}]</span>`).join('');
+            displayHtml = attachmentHtml + '<br>' + userText.replace(/\n/g, '<br>');
+        } else {
+            displayHtml = userText.replace(/\n/g, '<br>');
+        }
+        setEditorChat(prev => [...prev, { role: 'user', text: displayHtml }]);
+        setEditorPrompt('');
+        setIsEditorSending(true);
+
+        let systemInstruction = `LAPIS 1: ELITE FRONT-END ARCHITECT\nAnda adalah Elite Web Architect. Jika membuat kode baru, wajib gunakan Tailwind CSS via CDN. Output MURNI kodenya saja tanpa penjelasan.\n`;
+        let finalPrompt = '';
+        let isGithubMode = false;
+        let isUbahFrontEnd = false;
+
+        editorAttachments.forEach(att => {
+            if (att.type === 'front-end') isUbahFrontEnd = true;
+            if (att.type === 'github') isGithubMode = true;
+            if (att.payload) finalPrompt += att.payload + '\n\n';
+        });
+        setEditorAttachments([]);
+
+        const activeContent = fileSystem[activeFile]?.content || '';
+
+        if (isUbahFrontEnd) {
+            systemInstruction += `\nESTETIKA MUTLAK (REVISI/FRONT-END): Gunakan padding luas (p-6, p-10), rounded corners (rounded-2xl), dan transisi hover yang mulus. PASTIKAN hasil akhirnya terlihat sangat profesional dan memukau! LANGSUNG terapkan dan berikan HTML UTUH, DILARANG memberikan deskripsi awal.\n`;
+            finalPrompt += `\nBerikut kode aslinya, rombak desain front-endnya menjadi sangat profesional:\n${activeContent}\n`;
+        } else if (isGithubMode) {
+            systemInstruction += `\nMODE GITHUB (MULTI-FILE): Tolong pecah file HTML tunggal ini menjadi struktur Github murni (index.html, style.css, script.js, dan lainnya jika diperlukan). WAJIB pisahkan kodenya ke dalam blok-blok markdown dengan menyertakan nama file setelah tag bahasa. Contoh format keluaran yang diwajibkan:\n\`\`\`html:index.html\n<!-- kode -->\n\`\`\`\n\`\`\`css:style.css\n/* kode */\n\`\`\`\nLakukan sekarang tanpa penjelasan.\n`;
+            finalPrompt += `\nKode yang akan dipecah:\n${activeContent}\n`;
+        } else if (activeContent.length > 50) {
+            finalPrompt += `\nKode yang sedang diedit (${activeFile}):\n${activeContent}\n`;
+        }
+
+        finalPrompt += `\nInstruksi User: ${userText}`;
+
+        try {
+            const payload = { contents: [{ parts: [{ text: finalPrompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
+            const resultText = await callGeminiApiViaProxy('gemini-2.5-flash:generateContent', payload);
+            if (!resultText) throw new Error('Format AI tidak valid.');
+
+            if (isGithubMode) {
+                const fileRegex = /```(?:[a-zA-Z]+)?:([a-zA-Z0-9_\-./]+)\s*\n([\s\S]*?)```/g;
+                let match;
+                let filesFound = false;
+                const newFiles = {};
+                while ((match = fileRegex.exec(resultText)) !== null) {
+                    filesFound = true;
+                    newFiles[match[1].trim()] = { content: match[2].trim() };
+                }
+                if (filesFound) {
+                    const next = { ...fileSystem, ...newFiles };
+                    const nextActive = next['index.html'] ? 'index.html' : Object.keys(newFiles)[0];
+                    setFileSystem(next);
+                    setActiveFile(nextActive);
+                    saveEditorHistory('AI Github Mode', next, nextActive);
+                    setEditorChat(prev => [...prev, { role: 'ai', text: 'Proses Github selesai! File telah dipecah. Buka menu Garis Tiga untuk melihat strukturnya.' }]);
+                } else {
+                    throw new Error('Gagal mendeteksi blok file.');
+                }
+            } else {
+                let cleanCode = resultText.trim();
+                const singleMatch = cleanCode.match(/```(?:html)?\s*\n?([\s\S]*?)```/i);
+                if (singleMatch) cleanCode = singleMatch[1].trim();
+                const next = { ...fileSystem, [activeFile]: { content: cleanCode } };
+                setFileSystem(next);
+                saveEditorHistory('AI Response', next);
+                setEditorChat(prev => [...prev, { role: 'ai', text: 'Instruksi berhasil dieksekusi. Silakan lihat di tab Preview/Kode.' }]);
+            }
+        } catch (err) {
+            setEditorChat(prev => [...prev, { role: 'ai', text: `<span class="text-red-500 font-bold">Error:</span> Gagal (${err.message})` }]);
+        } finally {
+            setIsEditorSending(false);
+        }
+    };
+
+    const handleEditorPromptKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!isEditorSending) handleEditorSendPrompt();
+        }
+    };
+
+    // =====================================================================
+    // === EDITOR IDE: MODAL KONFIGURASI WARNA / FONT ===
+    // =====================================================================
+    const openEditorConfigModal = (mode) => {
+        setShowEditorActionMenu(false);
+        setEditorConfigMode(mode);
+        if (mode === 'color') setEditorConfigColorRows([{ hex: '#C8D100', label: '' }]);
+        if (mode === 'font') { setEditorConfigFont(''); setShowEditorConfigFontDropdown(false); }
+    };
+    const closeEditorConfigModal = () => setEditorConfigMode(null);
+
+    const addEditorConfigColorRow = () => {
+        setEditorConfigColorRows(prev => [...prev, { hex: '#FFFFFF', label: '' }]);
+    };
+    const updateEditorConfigColorRow = (idx, field, value) => {
+        setEditorConfigColorRows(prev => prev.map((row, i) => i === idx ? { ...row, [field]: value } : row));
+    };
+    const removeEditorConfigColorRow = (idx) => {
+        setEditorConfigColorRows(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const applyEditorConfigModal = () => {
+        if (editorConfigMode === 'color') {
+            const rules = editorConfigColorRows.map(r => r.label.trim() ? `[${r.label.trim()}: ${r.hex.toUpperCase()}]` : `[${r.hex.toUpperCase()}]`);
+            if (rules.length > 0) {
+                handleEditorAttachChip('color', `Warna: ${rules.join(', ')}`, `ATURAN WARNA: Terapkan ${rules.join(', ')} di elemen yang relevan.`);
+            }
+        } else if (editorConfigMode === 'font' && editorConfigFont) {
+            handleEditorAttachChip('font', `Font: ${editorConfigFont}`, `ATURAN FONT: Gunakan <link href="https://fonts.googleapis.com/css2?family=${editorConfigFont.replace(/ /g, '+')}&display=swap" rel="stylesheet"> dan pastikan CSS menerapkan font-family: '${editorConfigFont}', sans-serif.`);
+        }
+        closeEditorConfigModal();
+    };
+
     // 4. Fungsi untuk Menerapkan Perubahan Properti ke Iframe
     const applyPropertyChange = (propType, val) => {
         if (!selectedElementId || !iframeRef.current || !iframeRef.current.contentWindow) return;
@@ -979,9 +1398,10 @@ export default function App() {
             value: val 
         }, '*');
 
-        // Sync ke fileSystem (Auto Save)
-        clearTimeout(cardsSyncTimeout.current);
-        cardsSyncTimeout.current = setTimeout(() => {
+        // Sync ke fileSystem (Auto Save) + catat ke riwayat (debounce, pakai timeout khusus
+        // supaya tidak bentrok dengan auto-save cardsState di mode Front End)
+        clearTimeout(editorPropSyncTimeout.current);
+        editorPropSyncTimeout.current = setTimeout(() => {
             try {
                 let doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document; 
                 if(!doc) return;
@@ -993,10 +1413,9 @@ export default function App() {
                     htmlStr = htmlStr.replace(`<style>${fileSystem['style.css'].content}</style>`, ''); 
                 }
                 
-                setFileSystem(prev => ({
-                    ...prev,
-                    ['index.html']: { content: htmlStr }
-                }));
+                const next = { ...fileSystem, ['index.html']: { content: htmlStr } };
+                setFileSystem(next);
+                saveEditorHistory('Edit Visual', next);
                 
             } catch(e) { console.error("Iframe Sync Error", e); }
         }, 500);
@@ -1019,6 +1438,10 @@ export default function App() {
                 .custom-scroll::-webkit-scrollbar-thumb:hover { background: #898F00; }
                 .dot-anim::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
                 @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; } }
+                /* Layout Mobile constraints mutlak 650px (khusus Editor IDE) */
+                @media (max-width: 1023px) {
+                    .mobile-fixed-panel { height: 650px !important; min-height: 650px !important; flex-shrink: 0; }
+                }
             `}</style>
 
             {/* TOAST NOTIFICATION */}
@@ -1042,7 +1465,7 @@ export default function App() {
             <main className="w-full flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative min-h-0 bg-slate-100">
                 
                 {/* SIDEBAR KIRI */}
-                <aside className="w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative">
+                <aside className={`w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative ${sidebarTab === 'editor' ? 'mobile-fixed-panel' : ''}`}>
                     
                     {/* ========================================= */}
                     {/* AREA TENGAH (BISA DI-SCROLL, TERMASUK HEADER) */}
@@ -1354,7 +1777,7 @@ export default function App() {
                                     <h2 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                                         <BotIcon className="w-3.5 h-3.5 text-primaryDark" /> AI Assistant
                                     </h2>
-                                    <button className="flex items-center justify-center gap-1 py-1 px-2 text-[9px] font-bold uppercase tracking-wide rounded border transition-colors bg-red-50 text-red-600 border-red-200 hover:bg-red-100 shadow-sm">
+                                    <button onClick={handleEditorClearChat} className="flex items-center justify-center gap-1 py-1 px-2 text-[9px] font-bold uppercase tracking-wide rounded border transition-colors bg-red-50 text-red-600 border-red-200 hover:bg-red-100 shadow-sm">
                                         <TrashIcon className="w-3 h-3" /> CLEAR
                                     </button>
                                 </div>
@@ -1378,6 +1801,12 @@ export default function App() {
                                             <span dangerouslySetInnerHTML={{ __html: chat.text }} />
                                         </div>
                                     ))}
+                                    {isEditorSending && (
+                                        <div className="p-3 text-sm text-slate-500 w-11/12 font-sans italic flex items-center gap-2 ml-2">
+                                            <CustomSpinner className="w-4 h-4 text-primary" />
+                                            <span className="font-semibold">Memproses instruksi...</span>
+                                        </div>
+                                    )}
                                 </div>
                                 {/* Tutup border bawah jika tidak ada form menempel di dalam div ini */}
                                 <div className="h-px bg-slate-200 w-full"></div>
@@ -1458,7 +1887,8 @@ export default function App() {
                                     <textarea 
                                         value={editorPrompt} 
                                         onChange={e => setEditorPrompt(e.target.value)}
-                                        placeholder="Ketik instruksi di sini... (Enter untuk baris baru)" 
+                                        onKeyDown={handleEditorPromptKeyDown}
+                                        placeholder="Ketik instruksi di sini... (Enter untuk kirim, Shift+Enter untuk baris baru)" 
                                         className="w-full flex-1 p-3 pb-10 text-sm bg-transparent outline-none resize-none custom-scroll text-slate-700 h-24"
                                     />
                                     
@@ -1469,16 +1899,16 @@ export default function App() {
                                                 <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-slate-200 rounded-lg shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.15)] z-50 overflow-hidden transform origin-bottom-left transition-all">
                                                     <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Template Prompt</div>
                                                     
-                                                    <button onClick={() => { setShowEditorActionMenu(false); /* attach logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition">
+                                                    <button onClick={() => handleEditorAttachChip('front-end', 'Ubah Front End & Estetika', 'ATURAN FRONT-END: tandai mode revisi estetika penuh.')} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition">
                                                         <SparklesIcon className="w-3.5 h-3.5" /> Ubah Front End & Estetika
                                                     </button>
-                                                    <button onClick={() => { setShowEditorActionMenu(false); /* openColor logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
+                                                    <button onClick={() => openEditorConfigModal('color')} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
                                                         <PaletteIcon className="w-3.5 h-3.5" /> Konfigurasi Palet Warna Baru
                                                     </button>
-                                                    <button onClick={() => { setShowEditorActionMenu(false); /* openFont logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
+                                                    <button onClick={() => openEditorConfigModal('font')} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
                                                         <TypeIcon className="w-3.5 h-3.5" /> Tetapkan Jenis Font Utama
                                                     </button>
-                                                    <button onClick={() => { setShowEditorActionMenu(false); /* attachGithub logic */ }} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
+                                                    <button onClick={() => handleEditorAttachChip('github', 'Pecah Jadi Struktur Github', null)} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-primary/10 hover:text-primaryDark flex items-center gap-2 transition border-t border-slate-50">
                                                         <GithubIcon className="w-3.5 h-3.5" /> Pecah Jadi Struktur Github
                                                     </button>
                                                 </div>
@@ -1488,8 +1918,8 @@ export default function App() {
                                                 <PlusIcon className="w-4 h-4" />
                                             </button>
                                         </div>
-                                        <button className="w-9 h-9 rounded-full bg-primary hover:bg-primaryDark text-slate-900 flex items-center justify-center transition shadow-md disabled:opacity-50 z-10">
-                                            <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />
+                                        <button onClick={handleEditorSendPrompt} disabled={isEditorSending || (!editorPrompt.trim() && editorAttachments.length === 0)} className="w-9 h-9 rounded-full bg-primary hover:bg-primaryDark text-slate-900 flex items-center justify-center transition shadow-md disabled:opacity-50 z-10">
+                                            {isEditorSending ? <CustomSpinner className="w-4 h-4" /> : <SendIcon className="w-4 h-4 ml-[-2px] mt-[2px]" />}
                                         </button>
                                     </div>
                                 </div>
@@ -1502,7 +1932,7 @@ export default function App() {
                 {/* ============================================================== */}
                 {/* BAGIAN TENGAH: WORKSPACE (GENERATOR KARTU ATAU EDITOR IDE)     */}
                 {/* ============================================================== */}
-                <section className="flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100 shadow-inner z-10">
+                <section className={`flex-1 flex flex-col lg:overflow-hidden relative min-h-0 bg-slate-100 shadow-inner z-10 ${sidebarTab === 'editor' ? 'mobile-fixed-panel' : ''}`}>
                     
                     {/* --- MODE 1: FRONT END (GENERATOR KARTU) --- */}
                     {sidebarTab === 'frontend' && (
@@ -1600,8 +2030,8 @@ export default function App() {
                                     <button onClick={() => setWorkspaceTab('code')} className={`flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all ${workspaceTab === 'code' ? 'bg-white text-primary shadow-sm border border-primary/20' : 'text-slate-500 hover:bg-slate-200 border border-transparent'}`}>
                                         <CodeIcon className="w-3.5 h-3.5" /> KODE
                                     </button>
-                                    <button onClick={() => { /* Logika Publish via Vercel */ }} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200">
-                                        <PublishIcon className="w-3.5 h-3.5" /> PUBLISH
+                                    <button onClick={handlePublishEditorToVercel} disabled={isEditorPublishing} className="flex-1 flex items-center justify-center gap-2 py-1 text-xs font-bold uppercase tracking-wide rounded-md transition-all text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {isEditorPublishing ? <CustomSpinner className="w-3.5 h-3.5" /> : <PublishIcon className="w-3.5 h-3.5" />} {isEditorPublishing ? 'PROSES...' : 'PUBLISH'}
                                     </button>
                                 </div>
                             </div>
@@ -1652,15 +2082,15 @@ export default function App() {
                                                 </div>
                                                 <div className="flex items-center gap-2 group border border-[#404040] rounded bg-[#252525] px-2 py-0.5">
                                                     <CodeIcon className="w-3.5 h-3.5 text-primary" />
-                                                    <input type="text" value={activeFile} readOnly className="bg-transparent text-slate-200 text-xs font-mono w-32 outline-none border-b border-transparent focus:border-primary transition" title="Nama File (Read Only)" />
+                                                    <input type="text" key={activeFile} defaultValue={activeFile} onBlur={(e) => handleRenameActiveFile(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }} className="bg-transparent text-slate-200 text-xs font-mono w-32 outline-none border-b border-transparent focus:border-primary transition" title="Klik untuk mengubah nama" />
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => { setFileSystem(prev => ({...prev, [activeFile]: {content: ''}})) }} className="p-1.5 text-slate-300 bg-[#404040] border border-[#505050] rounded hover:text-red-400 hover:bg-red-900/40 hover:border-red-800 transition shadow-sm" title="Hapus Konten File Ini">
+                                                <button onClick={handleRequestDeleteActiveFileContent} className="p-1.5 text-slate-300 bg-[#404040] border border-[#505050] rounded hover:text-red-400 hover:bg-red-900/40 hover:border-red-800 transition shadow-sm" title="Hapus Konten File Ini">
                                                     <TrashIcon className="w-3.5 h-3.5" />
                                                 </button>
                                                 <div className="w-px h-4 bg-[#505050] mx-0.5"></div>
-                                                <input type="file" ref={fileUploadRef} accept=".html,.txt,.css,.js,.zip" className="hidden" onChange={(e) => {/* Logika Upload Nanti */}} />
+                                                <input type="file" ref={fileUploadRef} accept=".html,.txt,.css,.js,.zip" className="hidden" onChange={handleEditorCodeUpload} />
                                                 <button onClick={() => fileUploadRef.current?.click()} className="px-2.5 py-1.5 bg-[#404040] border border-[#505050] rounded text-[10px] font-bold text-slate-200 hover:text-slate-900 hover:bg-primary hover:border-primary flex items-center gap-1.5 transition shadow-sm">
                                                     <UploadIcon className="w-3 h-3" /> UPLOAD HTML
                                                 </button>
@@ -1669,7 +2099,7 @@ export default function App() {
                                         <div className="flex-1 relative bg-[#1e1e1e]">
                                             <textarea 
                                                 value={fileSystem[activeFile]?.content || ""} 
-                                                onChange={(e) => setFileSystem(prev => ({ ...prev, [activeFile]: { content: e.target.value } }))}
+                                                onChange={(e) => handleEditorCodeInput(e.target.value)}
                                                 spellCheck="false" 
                                                 placeholder="Ketik atau paste kode Anda di sini..." 
                                                 className="absolute inset-0 w-full h-full bg-transparent text-[#d4d4d4] font-mono text-[11px] p-4 outline-none resize-none custom-scroll leading-relaxed"
@@ -1686,21 +2116,36 @@ export default function App() {
                 {/* BAGIAN KANAN: INSPECTOR & HISTORY (HANYA MUNCUL DI MODE EDITOR)*/}
                 {/* ============================================================== */}
                 {sidebarTab === 'editor' && (
-                    <aside className="w-full lg:w-[30%] bg-white lg:border-l border-slate-200 flex flex-col shrink-0 lg:h-full relative z-20 shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)]">
+                    <aside className="w-full lg:w-[30%] bg-white lg:border-l border-slate-200 flex flex-col shrink-0 lg:h-full relative z-20 shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)] mobile-fixed-panel">
                         
                         <div className="h-14 border-b border-slate-200 bg-slate-50 flex items-center px-4 shrink-0 justify-between">
                             <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                                 <EditIcon className="w-3.5 h-3.5" /> Editor
                             </h2>
                             <div className="flex items-center gap-1.5 relative">
-                                <button disabled={historyIndex <= 0} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Undo"><UndoIcon className="w-3.5 h-3.5" /></button>
-                                <button disabled={historyIndex >= codeHistory.length - 1} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Redo"><RedoIcon className="w-3.5 h-3.5" /></button>
+                                <button onClick={undoEditorCode} disabled={historyIndex <= 0} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Undo"><UndoIcon className="w-3.5 h-3.5" /></button>
+                                <button onClick={redoEditorCode} disabled={historyIndex >= codeHistory.length - 1} className="w-7 h-7 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed" title="Redo"><RedoIcon className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => setShowHistoryMenu(!showHistoryMenu)} className="w-7 h-7 rounded bg-white border border-slate-200 text-primary flex items-center justify-center hover:bg-slate-100 transition shadow-sm" title="History"><ClockIcon className="w-3.5 h-3.5" /></button>
                                 
                                 {showHistoryMenu && (
                                     <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-[300px] flex flex-col overflow-hidden">
                                         <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 flex justify-between items-center tracking-wider uppercase">
                                             <span>Riwayat Versi</span><span className="bg-primary/20 text-primaryDark px-1.5 py-0.5 rounded">{codeHistory.length}</span>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto custom-scroll flex flex-col-reverse">
+                                            {codeHistory.length === 0 ? (
+                                                <div className="px-3 py-4 text-[11px] text-slate-400 text-center">Belum ada riwayat</div>
+                                            ) : (
+                                                codeHistory.map((item, idx) => {
+                                                    const isActive = idx === historyIndex;
+                                                    return (
+                                                        <button key={idx} onClick={() => restoreEditorHistoryByIndex(idx)} className={`w-full text-left px-3 py-2 text-[11px] border-b border-slate-100 flex justify-between items-center transition ${isActive ? 'bg-primary/10 text-primaryDark font-bold' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                                                            <span>Versi {idx + 1} <span className="text-[9px] text-slate-400 font-normal">({item.origin})</span></span>
+                                                            <span>{item.time}</span>
+                                                        </button>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1810,11 +2255,11 @@ export default function App() {
                         <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2 shrink-0">
                             <p className="text-[10px] text-center font-bold text-slate-500 mb-1 tracking-widest uppercase">EKSPOR PROJECT</p>
                             <div className="flex gap-2">
-                                <button className="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
+                                <button onClick={handleDownloadEditorHTML} className="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
                                     <FileTextIcon className="w-3.5 h-3.5" /> HTML
                                 </button>
-                                <button className="flex-1 bg-primary text-slate-900 hover:bg-primaryDark font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition">
-                                    <DownloadIcon className="w-3.5 h-3.5" /> ZIP
+                                <button onClick={handleDownloadEditorZip} disabled={isZipping} className="flex-1 bg-primary text-slate-900 hover:bg-primaryDark font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isZipping ? <CustomSpinner className="w-3.5 h-3.5" /> : <DownloadIcon className="w-3.5 h-3.5" />} ZIP
                                 </button>
                             </div>
                         </div>
@@ -1932,6 +2377,73 @@ export default function App() {
                         <div className="flex w-full gap-3">
                             <button onClick={() => setLogoutConfirm(false)} className="flex-1 bg-slate-200 text-slate-700 font-bold py-2 rounded hover:bg-slate-300 transition text-xs shadow-sm">Batal</button>
                             <button onClick={() => { setLogoutConfirm(false); handleLogout(); }} className="flex-1 bg-red-600 text-white font-bold py-2 rounded hover:bg-red-700 transition shadow-sm text-xs">Ya, Logout</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL KONFIGURASI PROMPT: WARNA / FONT (Editor IDE) */}
+            {editorConfigMode && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={closeEditorConfigModal}>
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col overflow-hidden max-h-[85vh]" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                                {editorConfigMode === 'color' ? <PaletteIcon className="w-4 h-4 text-primaryDark" /> : <TypeIcon className="w-4 h-4 text-primaryDark" />}
+                                {editorConfigMode === 'color' ? 'Konfigurasi Palet Warna' : 'Pemilihan Font Utama'}
+                            </h3>
+                            <button onClick={closeEditorConfigModal} className="text-slate-400 hover:text-red-500 transition"><XCircleIcon className="w-5 h-5" /></button>
+                        </div>
+
+                        <div className="p-4 overflow-y-auto custom-scroll flex-1">
+                            {editorConfigMode === 'color' && (
+                                <div className="flex flex-col gap-3">
+                                    {editorConfigColorRows.map((row, idx) => (
+                                        <div key={idx} className="relative bg-white border border-slate-200 p-2 rounded flex flex-col gap-1.5 shadow-sm">
+                                            <div className="flex gap-2 items-center">
+                                                <input type="color" value={row.hex} onChange={(e) => updateEditorConfigColorRow(idx, 'hex', e.target.value)} className="w-6 h-6 p-0 border-0 rounded cursor-pointer shrink-0" />
+                                                <input type="text" value={row.hex.toUpperCase()} onChange={(e) => updateEditorConfigColorRow(idx, 'hex', e.target.value)} className="w-full text-[10px] font-mono font-bold p-1 border border-slate-200 rounded bg-slate-50 outline-none focus:border-primary uppercase text-center" />
+                                            </div>
+                                            <input type="text" value={row.label} onChange={(e) => updateEditorConfigColorRow(idx, 'label', e.target.value)} placeholder="Peran (misal: Warna Utama)" className="w-full text-[10px] p-1.5 border border-slate-200 bg-slate-50 outline-none text-slate-700 font-medium rounded shadow-inner" />
+                                            {editorConfigColorRows.length > 1 && (
+                                                <button onClick={() => removeEditorConfigColorRow(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center shadow-md hover:bg-red-600 transition-transform">
+                                                    <XCircleIcon className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button onClick={addEditorConfigColorRow} className="w-full text-xs font-bold text-primaryDark border border-dashed border-primary/40 rounded-lg py-2 hover:bg-primary/10 transition flex items-center justify-center gap-1.5">
+                                        <PlusIcon className="w-3.5 h-3.5" /> Tambah Warna
+                                    </button>
+                                </div>
+                            )}
+
+                            {editorConfigMode === 'font' && (
+                                <div className="flex flex-col gap-3">
+                                    <div className="relative w-full">
+                                        <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Jenis Font (40+ Google Fonts)</span>
+                                        <button onClick={() => setShowEditorConfigFontDropdown(!showEditorConfigFontDropdown)} className="w-full flex justify-between items-center bg-white border border-slate-300 rounded p-2 hover:bg-slate-50 transition shadow-sm text-left outline-none">
+                                            <span className="text-[11px] truncate font-bold text-slate-800" style={{ fontFamily: editorConfigFont ? `'${editorConfigFont}', sans-serif` : 'inherit' }}>
+                                                {editorConfigFont || 'Pilih Font'}
+                                            </span>
+                                            <ChevronDownIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                        </button>
+                                        {showEditorConfigFontDropdown && (
+                                            <div className="absolute top-full left-0 w-full max-h-[220px] overflow-y-auto bg-white border border-slate-200 rounded shadow-xl z-[60] custom-scroll mt-1">
+                                                {FONTS.map(f => (
+                                                    <div key={f.id} onClick={() => { setEditorConfigFont(f.id); setShowEditorConfigFontDropdown(false); }} className="px-3 py-2 border-b border-slate-100 hover:bg-primary/10 cursor-pointer text-slate-800 text-[12px]" style={{ fontFamily: `'${f.id}', sans-serif` }}>
+                                                        {f.name}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 border-t border-slate-200 flex gap-3 shrink-0">
+                            <button onClick={closeEditorConfigModal} className="flex-1 bg-slate-200 text-slate-700 font-bold py-2 rounded hover:bg-slate-300 transition text-xs shadow-sm">Batal</button>
+                            <button onClick={applyEditorConfigModal} className="flex-1 bg-primary text-slate-900 font-bold py-2 rounded hover:bg-primaryDark transition shadow-sm text-xs">Terapkan</button>
                         </div>
                     </div>
                 </div>
