@@ -1532,7 +1532,7 @@ export default function App() {
             <main className="w-full flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative min-h-0 bg-slate-100">
                 
                 {/* SIDEBAR KIRI */}
-                <aside className="w-full lg:w-[380px] lg:min-w-[380px] lg:max-w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative mobile-fixed-panel">
+                 <aside className={`w-full lg:w-[380px] bg-slate-50 lg:border-r border-slate-200 flex flex-col z-20 shrink-0 lg:h-full lg:overflow-hidden relative ${sidebarTab === 'editor' ? 'mobile-fixed-panel' : ''}`}>
                     
                     {/* ========================================= */}
                     {/* AREA TENGAH (BISA DI-SCROLL, TERMASUK HEADER) */}
