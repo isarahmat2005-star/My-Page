@@ -1822,44 +1822,88 @@ export default function App() {
                             <div className={`flex flex-col gap-4 transition-opacity ${selectedElementId ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-[10px] font-bold tracking-wider font-mono bg-primary/20 text-primaryDark px-2 py-0.5 rounded shadow-sm">{selectedElementTag}</span>
-                                    <button onClick={() => setSelectedElementId(null)} className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition border border-transparent hover:border-red-200 rounded px-2 py-0.5">Tutup X</button>
+                                    <button onClick={handleDeselectElement} className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition border border-transparent hover:border-red-200 rounded px-2 py-0.5">Tutup X</button>
                                 </div>
 
+                                {/* Bagian Konten Teks */}
                                 <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><FileTextIcon className="w-3 h-3" /> Konten Teks</label>
-                                    <textarea value={elementProps.text} onChange={(e) => setElementProps({...elementProps, text: e.target.value})} rows="3" className="w-full text-xs p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none custom-scroll bg-slate-50 transition" />
+                                    <textarea value={elementProps.text} onChange={(e) => applyPropertyChange('text', e.target.value)} rows="3" className="w-full text-xs p-2 border border-slate-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none custom-scroll bg-slate-50 transition" />
                                 </div>
 
+                                {/* Bagian Warna */}
                                 <div className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
                                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><PaletteIcon className="w-3 h-3" /> Palet Warna</label>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Teks (Color)</span>
                                             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded p-1 focus-within:border-primary transition">
-                                                <input type="color" value={elementProps.color} onChange={(e) => setElementProps({...elementProps, color: e.target.value})} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
-                                                <input type="text" value={elementProps.color} onChange={(e) => setElementProps({...elementProps, color: e.target.value})} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
+                                                <input type="color" value={elementProps.color} onChange={(e) => applyPropertyChange('color', e.target.value)} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
+                                                <input type="text" value={elementProps.color} onChange={(e) => applyPropertyChange('color', e.target.value)} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
                                             </div>
                                         </div>
                                         <div>
                                             <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Latar (Background)</span>
                                             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded p-1 focus-within:border-primary transition">
-                                                <input type="color" value={elementProps.bgColor} onChange={(e) => setElementProps({...elementProps, bgColor: e.target.value})} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
-                                                <input type="text" value={elementProps.bgColor} onChange={(e) => setElementProps({...elementProps, bgColor: e.target.value})} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
+                                                <input type="color" value={elementProps.bgColor} onChange={(e) => applyPropertyChange('bgColor', e.target.value)} className="w-6 h-6 border-0 p-0 cursor-pointer rounded-sm shrink-0" />
+                                                <input type="text" value={elementProps.bgColor} onChange={(e) => applyPropertyChange('bgColor', e.target.value)} className="w-full text-[10px] font-mono outline-none bg-transparent uppercase font-bold" />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Bagian Tipografi (Tambahan yang sebelumnya hilang) */}
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
+                                    <button onClick={() => setInspectorAccordion(inspectorAccordion === 'font' ? null : 'font')} className="w-full flex justify-between items-center text-[10px] font-bold text-slate-700 uppercase tracking-wide hover:text-primaryDark transition-colors outline-none group p-3">
+                                        <span className="flex items-center gap-1.5"><TypeIcon className="w-3 h-3 text-slate-400 group-hover:text-primaryDark" /> Tipografi Font</span>
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${inspectorAccordion === 'font' ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    
+                                    {inspectorAccordion === 'font' && (
+                                        <div className="border-t border-slate-200 p-3 pt-2 flex-col gap-3 flex">
+                                            <div className="grid grid-cols-2 gap-3 mt-1">
+                                                <div>
+                                                    <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Ukuran (Size)</span>
+                                                    <select value={elementProps.fontSize} onChange={(e) => applyPropertyChange('fontSize', e.target.value)} className="w-full text-[11px] p-2 border border-slate-300 rounded bg-white outline-none focus:border-primary transition">
+                                                        <option value="">Bawaan CSS</option>
+                                                        <option value="12px">12px (XS)</option>
+                                                        <option value="14px">14px (SM)</option>
+                                                        <option value="16px">16px (Base)</option>
+                                                        <option value="18px">18px (LG)</option>
+                                                        <option value="20px">20px (XL)</option>
+                                                        <option value="24px">24px (2XL)</option>
+                                                        <option value="30px">30px (3XL)</option>
+                                                        <option value="36px">36px (4XL)</option>
+                                                        <option value="48px">48px (5XL)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] font-semibold text-slate-600 mb-1 block">Tebal (Weight)</span>
+                                                    <select value={elementProps.fontWeight} onChange={(e) => applyPropertyChange('fontWeight', e.target.value)} className="w-full text-[11px] p-2 border border-slate-300 rounded bg-white outline-none focus:border-primary transition">
+                                                        <option value="">Bawaan CSS</option>
+                                                        <option value="300">300 (Light)</option>
+                                                        <option value="400">400 (Regular)</option>
+                                                        <option value="500">500 (Medium)</option>
+                                                        <option value="600">600 (Semi Bold)</option>
+                                                        <option value="700">700 (Bold)</option>
+                                                        <option value="800">800 (Extra Bold)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Bagian Layout */}
                                 <div className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
                                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><LayoutBoxIcon className="w-3 h-3" /> Tata Letak & Bingkai</label>
                                     <div className="grid grid-cols-3 gap-2">
-                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Padding</span><input type="text" value={elementProps.padding} onChange={(e) => setElementProps({...elementProps, padding: e.target.value})} placeholder="mis: 16px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
-                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Margin</span><input type="text" value={elementProps.margin} onChange={(e) => setElementProps({...elementProps, margin: e.target.value})} placeholder="mis: 0 auto" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
-                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Radius</span><input type="text" value={elementProps.borderRadius} onChange={(e) => setElementProps({...elementProps, borderRadius: e.target.value})} placeholder="mis: 8px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Padding</span><input type="text" value={elementProps.padding} onChange={(e) => applyPropertyChange('padding', e.target.value)} placeholder="mis: 16px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Margin</span><input type="text" value={elementProps.margin} onChange={(e) => applyPropertyChange('margin', e.target.value)} placeholder="mis: 0 auto" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
+                                        <div><span className="text-[10px] font-semibold text-slate-600 mb-1 block">Radius</span><input type="text" value={elementProps.borderRadius} onChange={(e) => applyPropertyChange('borderRadius', e.target.value)} placeholder="mis: 8px" className="w-full text-[11px] p-1.5 border border-slate-300 rounded bg-slate-50 focus:border-primary outline-none transition" /></div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
                         {/* Download Panel */}
                         <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2 shrink-0">
